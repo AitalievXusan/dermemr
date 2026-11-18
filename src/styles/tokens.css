@@ -1,0 +1,91 @@
+/* Дизайн-токены DermEMR — DESIGN §2.1, §3.1, §4.2, §6.2 */
+
+:root {
+  --font-serif: 'Newsreader', 'Lora', Georgia, serif;
+  --font-sans: 'Geist', 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-mono: 'JetBrains Mono', 'IBM Plex Mono', monospace;
+
+  --radius-container: 8px;
+  --radius-control: 6px;
+  --radius-pill: 9999px;
+
+  --ease: cubic-bezier(0.2, 0, 0, 1);
+  --dur: 150ms;
+
+  --header-h: 52px;
+  --shadow-pop: 0 8px 24px -4px rgba(16, 29, 24, 0.14);
+
+  --sev-mild: #e6ddd0;
+  --sev-moderate: #c9827b;
+  --sev-severe: #7d2e38;
+}
+
+:root[data-theme='light'] {
+  --bg-canvas: #f7f4ef;
+  --bg-surface-primary: #fcfbf8;
+  --bg-surface-secondary: #efeae1;
+  --bg-surface-hover: #eae3d7;
+
+  --text-primary: #19382c;
+  --text-secondary: #4a6358;
+  --text-muted: #7b8c84;
+  --text-on-accent: #fcfbf8;
+
+  --accent-primary: #c9827b;
+  --accent-primary-hover: #b86f68;
+  --accent-primary-soft: #f3e2df;
+  --accent-authority: #19382c;
+
+  --border-subtle: #dfd8ce;
+  --border-strong: #19382c;
+  --border-accent: #c9827b;
+
+  --media-calibration-bg: #242524;
+  --media-calibration-border: #d4d4d4;
+  --media-isolation-frame: #e2e2e2;
+
+  --status-danger-text: #a63232;
+  --status-danger-bg: #f7e1e0;
+  --status-danger-border: #d98a8a;
+  --status-success-text: #1e4637;
+  --status-success-bg: #e1ece6;
+  --status-warning-text: #8c5828;
+  --status-warning-bg: #f5ead8;
+
+  --inset-track: inset 0 1px 2px rgba(25, 56, 44, 0.08);
+}
+
+:root[data-theme='dark'] {
+  --bg-canvas: #101d18;
+  --bg-surface-primary: #172822;
+  --bg-surface-secondary: #1e332b;
+  --bg-surface-hover: #253e35;
+
+  --text-primary: #ece6dd;
+  --text-secondary: #b5c2bb;
+  --text-muted: #768a81;
+  --text-on-accent: #101d18;
+
+  --accent-primary: #d99b93;
+  --accent-primary-hover: #e3aba4;
+  --accent-primary-soft: #362a29;
+  --accent-authority: #ece6dd;
+
+  --border-subtle: #263d34;
+  --border-strong: #d99b93;
+  --border-accent: #d99b93;
+
+  --media-calibration-bg: #1a1b1a;
+  --media-calibration-border: #383a39;
+  --media-isolation-frame: #2a2c2b;
+
+  --status-danger-text: #f2a3a3;
+  --status-danger-bg: #3d1e20;
+  --status-danger-border: #8c3b3e;
+  --status-success-text: #86c7ae;
+  --status-success-bg: #1b382d;
+  --status-warning-text: #e5ba85;
+  --status-warning-bg: #382b1b;
+
+  --inset-track: inset 0 1px 2px rgba(0, 0, 0, 0.35);
+}
