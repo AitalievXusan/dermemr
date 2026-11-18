@@ -6,6 +6,7 @@ const rooms = new Map<string, Set<WebSocket>>();
 
 export function attachRealtime(server: Server) {
   const wss = new WebSocketServer({ server, path: '/ws' });
+  wss.on('error', () => undefined); // ошибки порта обрабатывает main.ts
   wss.on('connection', (ws) => {
     const joined = new Set<string>();
     ws.on('message', (raw) => {

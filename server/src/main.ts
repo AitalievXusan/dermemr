@@ -42,8 +42,15 @@ attachRealtime(server);
 startPollers();
 warmUpPdfEngine();
 
-server.listen(config.port, config.host, () => {
-  const local = `http://localhost:${config.port}`;
+// Если порт занят другим приложением (например, другим проектом на :3000) — берем следующий свободный.
+let port = config.port;
+const listen = () => server.listen(port, config.host);
+listen();
+
+server.on('listening', () => {
+  config.port = port;
+  if (!process.env.PUBLIC_URL) config.publicUrl = `http://${lanIp() ?? 'localhost'}:${port}`;
+  const local = `http://localhost:${port}`;
   const lan = lanIp();
   console.log('\n  DermEMR — онлайн медицинская карта приема дерматолога');
   console.log(`  Откройте в браузере:   ${local}`);
@@ -60,8 +67,13 @@ server.listen(config.port, config.host, () => {
 });
 
 server.on('error', (e: NodeJS.ErrnoException) => {
-  if (e.code === 'EADDRINUSE') console.error(`\n  Порт ${config.port} занят. Укажите другой в .env (PORT=3001) или закройте предыдущий запуск.\n`);
-  else console.error(e);
+  if (e.code === 'EADDRINUSE' && port < config.port + 20) {
+    console.log(`  Порт ${port} занят другим приложением — пробую ${port + 1}…`);
+    port += 1;
+    setTimeout(listen, 100);
+    return;
+  }
+  console.error(e.code === 'EADDRINUSE' ? `\n  Порты ${config.port}–${port} заняты. Укажите другой в .env (PORT=...).\n` : e);
   process.exit(1);
 });
 
