@@ -4,6 +4,7 @@ import { config } from './config';
 import type {
   Channel, DeliveryStatus, DocsSelection, EncounterState, GeneratedDoc, HistoryItem, Marker, Patient, PreviousVisit, ProcedureItem, Soap,
 } from '../../src/types';
+import type { DayCourse } from '../../src/data/dayHospital';
 
 // Встроенное JSON-хранилище для локального запуска (одна клиника, один компьютер).
 // Структура повторяет таблицы SPEC §2.1; для продакшена — server/db/schema.sql (PostgreSQL).
@@ -95,6 +96,8 @@ export interface DbShape {
   portal: { patientId: string; encounterId: string; documentIds: string[]; publishedAt: string; readAt: string | null }[];
   linkTokens: LinkToken[];
   dictionaries: Record<string, unknown>;
+  /** Дневной стационар (появилось позже — в старых db.json поля нет). */
+  dayCourses?: DayCourse[];
 }
 
 const FILE = resolve(config.dataDir, 'db.json');

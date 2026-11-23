@@ -5,6 +5,7 @@ import type { CdssAlert } from './cdss';
 import { checkDrug } from './cdss';
 import { applyDictionaries, type Dictionaries } from '../data/dictionaries';
 import type { MediaItem } from '../components/left/media';
+import { templateRows, todayIso, type DayCourse, type DayCourseInput } from '../data/dayHospital';
 
 export interface ServerConfig {
   publicUrl: string;
@@ -211,3 +212,61 @@ export interface PortalData {
   }[];
 }
 export const fetchPortal = (patientId: string) => req<PortalData>('GET', `/api/v1/portal/${patientId}`);
+
+// ---------- Дневной стационар ----------
+// Без сервера курсы хранятся в браузере (localStorage), чтобы раздел работал и в демо-режиме.
+const DH_LOCAL = 'dermemr-day-courses';
+const localCourses = (): DayCourse[] => {
+  try {
+    return JSON.parse(localStorage.getItem(DH_LOCAL) || '[]') as DayCourse[];
+  } catch {
+    return [];
+  }
+};
+const saveLocalCourses = (list: DayCourse[]) => {
+  try {
+    localStorage.setItem(DH_LOCAL, JSON.stringify(list));
+  } catch { /* переполнение хранилища — данные останутся до перезагрузки */ }
+};
+
+export async function listDayCourses(): Promise<DayCourse[]> {
+  if (server.online) return req<DayCourse[]>('GET', '/api/v1/day-courses');
+  return localCourses().sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+}
+
+export async function getDayCourse(id: string): Promise<DayCourse> {
+  if (server.online) return req<DayCourse>('GET', `/api/v1/day-courses/${encodeURIComponent(id)}`);
+  const c = localCourses().find((x) => x.id === id);
+  if (!c) throw new ApiError(404, 'Курс не найден');
+  return c;
+}
+
+export async function createDayCourse(input: DayCourseInput & { fromEncounterId?: string }): Promise<DayCourse> {
+  if (server.online) return req<DayCourse>('POST', '/api/v1/day-courses', input);
+  const now = new Date().toISOString();
+  const template = input.template ?? 'empty';
+  const c: DayCourse = {
+    id: `dh_${Date.now().toString(36)}`, encounterId: input.fromEncounterId ?? null, patientId: null, fio: '', birthYear: '', phone: '', diagnosis: '', doctor: '',
+    startDate: todayIso(), template, lang: 'ru', rows: templateRows(template), status: 'ACTIVE', createdAt: now, updatedAt: now, ...input,
+  };
+  saveLocalCourses([...localCourses(), c]);
+  return c;
+}
+
+export async function patchDayCourse(id: string, patch: DayCourseInput): Promise<DayCourse> {
+  if (server.online) return req<DayCourse>('PATCH', `/api/v1/day-courses/${encodeURIComponent(id)}`, patch);
+  const list = localCourses();
+  const c = list.find((x) => x.id === id);
+  if (!c) throw new ApiError(404, 'Курс не найден');
+  Object.assign(c, patch, { updatedAt: new Date().toISOString() });
+  saveLocalCourses(list);
+  return c;
+}
+
+export async function deleteDayCourse(id: string): Promise<void> {
+  if (server.online) {
+    await req('DELETE', `/api/v1/day-courses/${encodeURIComponent(id)}`);
+    return;
+  }
+  saveLocalCourses(localCourses().filter((x) => x.id !== id));
+}

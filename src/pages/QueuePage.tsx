@@ -17,6 +17,7 @@ export function TopBar({ title }: { title: string }) {
       <span className="topbar__title">{title}</span>
       <nav className="topbar__nav">
         <a href="#/">Очередь</a>
+        <a href="#/day-hospital">Дневной стационар</a>
         <a href="#/cashier">Касса</a>
         <a href="#/portal">Личный кабинет</a>
       </nav>

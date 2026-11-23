@@ -8,12 +8,14 @@ import { seedDb } from './seed';
 import { dispatch, json, sendFile, serveStatic, type Req } from './http';
 import { attachRealtime } from './realtime';
 import { applyStoredDictionaries, registerRoutes } from './routes';
+import { registerDayHospitalRoutes } from './dayHospital';
 import { startPollers, channelMode } from './gateways';
 import { browserPath, closePdfEngine, warmUpPdfEngine } from './pdf';
 
 loadDb(seedDb);
 applyStoredDictionaries();
 registerRoutes();
+registerDayHospitalRoutes();
 
 const GUIDELINES_DIR = resolve(ROOT, 'guidelines');
 
