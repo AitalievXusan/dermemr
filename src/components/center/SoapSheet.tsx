@@ -36,20 +36,27 @@ function TemplateSearch() {
   );
 }
 
+/** Быстрые шаблоны, диктовка и поиск — над листом приёма и на странице «Жалобы». */
+export function SoapToolbar() {
+  return (
+    <div className="sheet__bar">
+      <div className="chips" role="toolbar" aria-label="Частые нозологии">
+        {QUICK_TEMPLATES.map((t) => (
+          <button key={t.id} type="button" className="chip chip--nosology" onClick={() => void applyTemplateWithCdss(t)} title={`${t.icd10Code} · ${t.title}`}>
+            {t.quickLabel}
+          </button>
+        ))}
+      </div>
+      <Dictation />
+      <TemplateSearch />
+    </div>
+  );
+}
+
 export function SoapSheet() {
   return (
     <div className="sheet">
-      <div className="sheet__bar">
-        <div className="chips" role="toolbar" aria-label="Частые нозологии">
-          {QUICK_TEMPLATES.map((t) => (
-            <button key={t.id} type="button" className="chip chip--nosology" onClick={() => void applyTemplateWithCdss(t)} title={`${t.icd10Code} · ${t.title}`}>
-              {t.quickLabel}
-            </button>
-          ))}
-        </div>
-        <Dictation />
-        <TemplateSearch />
-      </div>
+      <SoapToolbar />
       <article className="sheet__paper" aria-label="Протокол SOAP">
         <SectionS />
         <SectionO />
