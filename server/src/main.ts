@@ -1,10 +1,11 @@
 import { createServer } from 'node:http';
 import { exec } from 'node:child_process';
 import { existsSync } from 'node:fs';
-import { config, lanIp } from './config';
+import { basename, join, resolve } from 'node:path';
+import { config, lanIp, ROOT } from './config';
 import { flushDb, loadDb } from './db';
 import { seedDb } from './seed';
-import { dispatch, json, serveStatic, type Req } from './http';
+import { dispatch, json, sendFile, serveStatic, type Req } from './http';
 import { attachRealtime } from './realtime';
 import { applyStoredDictionaries, registerRoutes } from './routes';
 import { startPollers, channelMode } from './gateways';
@@ -13,6 +14,8 @@ import { browserPath, closePdfEngine, warmUpPdfEngine } from './pdf';
 loadDb(seedDb);
 applyStoredDictionaries();
 registerRoutes();
+
+const GUIDELINES_DIR = resolve(ROOT, 'guidelines');
 
 const server = createServer(async (rawReq, res) => {
   const req = rawReq as Req;
@@ -33,6 +36,14 @@ const server = createServer(async (rawReq, res) => {
   }
   if (await dispatch(req, res)) return;
   if (req.path.startsWith('/api/')) return json(res, 404, { error: 'Не найдено' });
+  // PDF клинических протоколов и стандартов из папки guidelines/ (ссылки из подсказок в карте приема)
+  if (req.path.startsWith('/guidelines/') && (req.method === 'GET' || req.method === 'HEAD')) {
+    let name = '';
+    try { name = basename(decodeURIComponent(req.path.slice('/guidelines/'.length))); } catch { /* битый URL */ }
+    const file = join(GUIDELINES_DIR, name);
+    if (name && file.toLowerCase().endsWith('.pdf') && existsSync(file)) return sendFile(res, file, { mime: 'application/pdf' });
+    return json(res, 404, { error: 'Документ не найден' });
+  }
   if (serveStatic(config.distDir, req, res)) return;
   res.writeHead(503, { 'Content-Type': 'text/plain; charset=utf-8' });
   res.end('Фронтенд не собран. Выполните: npm run build');

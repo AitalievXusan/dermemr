@@ -11,11 +11,12 @@ import type { MediaItem } from '../left/media';
 // (renderToStaticMarkup → Playwright page.pdf()).
 
 export const CLINIC = {
-  name: 'Клиника дерматологии «Атлас»',
-  legal: 'ООО «Атлас Дерм» · ИНН 7701234567',
-  address: 'г. Москва, ул. Пречистенка, 12',
-  phone: '+7 495 000-00-00',
-  license: 'Лицензия № Л041-01137-77/00366341',
+  name: 'Dermaclinic — центр дерматологии и эстетики',
+  // Юр. лицо (наименование, ИНН) и номер лицензии — заполнить, пустые поля в документах не выводятся.
+  legal: '',
+  address: 'г. Ташкент, ул. Буюк Ипак Юли, 187',
+  phone: '+998 97 370 15 15',
+  license: '',
   doctor: 'Соколова Елена Андреевна',
   doctorTitle: 'врач-дерматовенеролог, высшая категория',
 };
@@ -56,8 +57,8 @@ function PatientHeaderA4({ state, title, verifyBase }: { state: EncounterState; 
       <div className="a4__clinic">
         <div>
           <div className="a4__clinic-name">{CLINIC.name}</div>
-          <div className="a4__clinic-meta">{CLINIC.legal} · {CLINIC.address} · {CLINIC.phone}</div>
-          <div className="a4__clinic-meta">{CLINIC.license}</div>
+          <div className="a4__clinic-meta">{[CLINIC.legal, CLINIC.address, CLINIC.phone].filter(Boolean).join(' · ')}</div>
+          {CLINIC.license && <div className="a4__clinic-meta">{CLINIC.license}</div>}
         </div>
         <div>
           <QrMark url={verifyUrlFor(verifyBase, hash)} size={18} />

@@ -26,7 +26,7 @@ export function TopBar({ title }: { title: string }) {
 }
 
 function NewPatientForm({ onCreated }: { onCreated: (encId: string) => void }) {
-  const [f, setF] = useState({ fullName: '', birthDate: '', sex: 'F' as 'F' | 'M', fitzpatrick: 'II' as Patient['fitzpatrick'], phone: '+7', weightKg: 70, allergies: '', pregnant: false, consent: true });
+  const [f, setF] = useState({ fullName: '', birthDate: '', sex: 'F' as 'F' | 'M', fitzpatrick: 'II' as Patient['fitzpatrick'], phone: '+998', weightKg: 70, allergies: '', pregnant: false, consent: true });
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const submit = async () => {

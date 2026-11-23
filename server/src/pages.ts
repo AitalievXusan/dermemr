@@ -70,5 +70,5 @@ export function verifyPage(found: { patient: string; date: string; doctor: strin
     : `<div class="err">Документ с таким кодом не найден. Возможно, он изменен или выпущен не этой клиникой.</div>`;
   return `<!doctype html><html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Проверка подлинности документа</title><style>${BASE_CSS}</style></head><body><div class="wrap">
-<h1>Проверка подлинности</h1><div class="muted">Клиника дерматологии «Атлас»</div>${body}</div></body></html>`;
+<h1>Проверка подлинности</h1><div class="muted">Dermaclinic — центр дерматологии и эстетики</div>${body}</div></body></html>`;
 }

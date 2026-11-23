@@ -15,6 +15,7 @@ export default defineConfig({
       '/media': target,
       '/m/': target,
       '/verify': target,
+      '/guidelines': target,
       '/webhooks': target,
       '/ws': { target: target.replace('http', 'ws'), ws: true },
     },

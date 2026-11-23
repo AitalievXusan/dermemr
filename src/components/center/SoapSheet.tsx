@@ -3,6 +3,7 @@ import { applyTemplateWithCdss } from '../../state';
 import { GROUP_NAMES, MACROS, QUICK_TEMPLATES, TEMPLATE_LIBRARY } from '../../data/templates';
 import { Icon } from '../ui/Icon';
 import { SectionA } from './SectionA';
+import { GuidelinePanel } from './GuidelinePanel';
 import { SectionO } from './SectionO';
 import { SectionP } from './SectionP';
 import { SectionS } from './SectionS';
@@ -53,6 +54,7 @@ export function SoapSheet() {
         <SectionS />
         <SectionO />
         <SectionA />
+        <GuidelinePanel />
         <SectionP />
         <p className="sheet__foot">
           <span className="mono">/</span> — макросы в любом поле · <span className="mono">Ctrl+S</span> — сохранить · <span className="mono">Ctrl+Enter</span> — завершить и сформировать документы

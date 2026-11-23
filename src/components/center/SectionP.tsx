@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { addService, encounter, setPatientWeight, setServiceCategory, setServiceQty, ui, updateSoap, useEnc, useUi } from '../../state';
 import { cdssCheck } from '../../lib/api';
 import { EXTEMPORAL_TEMPLATES } from '../../data/extemporal';
 import { DRUGS, findDrug } from '../../data/drugs';
+import { getGuidelinesSync, matchGuidelines, useGuidelines } from '../../lib/guidelines';
 import { searchPrice } from '../../data/priceList';
 import { cumulativeDosePerKg, isotretinoinTarget } from '../../lib/calculators';
 import { rub, SLOT_LABEL } from '../../lib/format';
@@ -27,6 +28,13 @@ function SlotPicker({ value, onChange }: { value: TimeSlot[]; onChange: (v: Time
   );
 }
 
+/** Препарат есть в стандарте МЗ РУз для текущего диагноза (для запуска CDSS при выборе из подсказок). */
+function inProtocol(name: string): boolean {
+  const all = getGuidelinesSync();
+  const code = encounter.get().soap.assessment.primaryDiagnosis.icd10Code;
+  return !!all && !!code && matchGuidelines(all, code).some((g) => g.drugs.some((d) => d.n === name));
+}
+
 /** Ввод препарата: автокомплит из справочника + CDSS-проверка при выборе (SPEC §3.3). */
 function DrugInput({ list, id, value, route }: { list: 'topicalTherapy' | 'systemicTherapy'; id: string; value: string; route: 'topical' | 'systemic' }) {
   const listId = `drugs-${route}`;
@@ -44,7 +52,7 @@ function DrugInput({ list, id, value, route }: { list: 'topicalTherapy' | 'syste
           if (item) item.drugName = name;
         });
         const exact = DRUGS.find((d) => d.name === name);
-        if (exact) {
+        if (exact || inProtocol(name)) {
           // POST /api/v1/cdss/check: аллергии, тератогенность, межлекарственные взаимодействия
           const { soap, encounterId, patient } = encounter.get();
           const current = [...soap.plan.topicalTherapy, ...soap.plan.systemicTherapy].filter((x) => x.id !== id).map((x) => x.drugName);
@@ -57,11 +65,25 @@ function DrugInput({ list, id, value, route }: { list: 'topicalTherapy' | 'syste
   );
 }
 
+/** Автокомплит: локальный справочник + препараты из стандарта МЗ РУз для текущего диагноза. */
 function DrugDatalists() {
+  const code = useEnc((s) => s.soap.assessment.primaryDiagnosis.icd10Code);
+  const all = useGuidelines();
+  const protocol = useMemo(() => {
+    const ms = all && code ? matchGuidelines(all, code) : [];
+    const names = (g: 'topical' | 'systemic') => [...new Set(ms.flatMap((m) => m.drugs.filter((d) => d.g === g).map((d) => d.n)))].filter((n) => !DRUGS.some((x) => x.name === n));
+    return { topical: names('topical'), systemic: names('systemic') };
+  }, [all, code]);
   return (
     <>
-      <datalist id="drugs-topical">{DRUGS.filter((d) => d.route === 'topical').map((d) => <option key={d.name} value={d.name} />)}</datalist>
-      <datalist id="drugs-systemic">{DRUGS.filter((d) => d.route !== 'topical').map((d) => <option key={d.name} value={d.name} />)}</datalist>
+      <datalist id="drugs-topical">
+        {DRUGS.filter((d) => d.route === 'topical').map((d) => <option key={d.name} value={d.name} />)}
+        {protocol.topical.map((n) => <option key={`p-${n}`} value={n} label="стандарт МЗ РУз" />)}
+      </datalist>
+      <datalist id="drugs-systemic">
+        {DRUGS.filter((d) => d.route !== 'topical').map((d) => <option key={d.name} value={d.name} />)}
+        {protocol.systemic.map((n) => <option key={`p-${n}`} value={n} label="стандарт МЗ РУз" />)}
+      </datalist>
     </>
   );
 }

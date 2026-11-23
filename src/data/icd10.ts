@@ -1,4 +1,6 @@
 // Локальный фрагмент справочника МКБ-10 (дерматовенерология). В проде — API МИС.
+import { GUIDELINE_ICD10 } from './guidelineIcd';
+
 export interface Icd10Entry {
   code: string;
   name: string;
@@ -61,10 +63,13 @@ export const ICD10: Icd10Entry[] = [
   { code: 'L50.8', name: 'Другая крапивница (хроническая)' },
 ];
 
+// Плюс коды нозологий из клинических протоколов МЗ РУз (без дублей).
+const ALL_ICD10: Icd10Entry[] = [...ICD10, ...GUIDELINE_ICD10.filter((g) => !ICD10.some((e) => e.code === g.code))];
+
 export function searchIcd10(query: string, limit = 8): Icd10Entry[] {
   const q = query.trim().toLowerCase();
   if (!q) return [];
-  return ICD10.filter(
+  return ALL_ICD10.filter(
     (e) => e.code.toLowerCase().startsWith(q) || e.name.toLowerCase().includes(q),
   ).slice(0, limit);
 }
