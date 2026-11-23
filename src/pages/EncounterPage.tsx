@@ -19,6 +19,7 @@ import { DiagnosisStep } from '../visit/DiagnosisStep';
 import { TreatmentStep } from '../visit/TreatmentStep';
 import { SummaryStep } from '../visit/SummaryStep';
 import type { EncounterState } from '../types';
+import { tr } from '../lib/i18n';
 
 // Карта приёма по страницам (вариант A): Жалобы → Осмотр → Диагноз → Лечение → Итог.
 // Режим «Одним листом» сохраняет прежнюю трёхколоночную раскладку.
@@ -99,8 +100,8 @@ export function EncounterPage({ id, onDayHospital }: { id: string; onDayHospital
     return () => window.removeEventListener('keydown', onKey);
   }, []);
 
-  if (loadError) return <div className="page-msg">Не удалось открыть визит: {loadError}. <a href="#/">К очереди</a></div>;
-  if (server.online && (loading || loadedId !== id)) return <div className="page-msg mono">Загрузка карты…</div>;
+  if (loadError) return <div className="page-msg">{tr('Не удалось открыть визит')}: {loadError}. <a href="#/">{tr('К очереди')}</a></div>;
+  if (server.online && (loading || loadedId !== id)) return <div className="page-msg mono">{tr('Загрузка карты…')}</div>;
 
   return (
     <div className={`app${layout === 'steps' ? ' v-app' : ''}`}>
@@ -108,7 +109,7 @@ export function EncounterPage({ id, onDayHospital }: { id: string; onDayHospital
         <>
           <VisitTopbar onHistory={() => setDrawer(true)} />
           <VisitStepper active={step} done={filled.map((f) => f(state))} onPick={goStep} />
-          <main className="v-main" aria-label={`Шаг ${step + 1}: ${STEP_TITLES[step]}`}>
+          <main className="v-main" aria-label={`${tr('Шаг')} ${step + 1}: ${tr(STEP_TITLES[step])}`}>
             {step === 0 && <ComplaintsStep />}
             {step === 1 && <ExamStep onPhotos={() => setDrawer(true)} onCalc={() => setCalc(true)} />}
             {step === 2 && <DiagnosisStep onCalc={() => setCalc(true)} />}
@@ -119,7 +120,7 @@ export function EncounterPage({ id, onDayHospital }: { id: string; onDayHospital
             step={step}
             onStep={goStep}
             onFinish={() => ui.set((u) => { u.docsModalOpen = true; })}
-            extra={<button type="button" className="v-btn v-btn--soft v-btn--sm" onClick={switchLayout} title="Прежний вид: протокол одним листом в три колонки"><Icon name="columns" size={16} /> Одним листом</button>}
+            extra={<button type="button" className="v-btn v-btn--soft v-btn--sm" onClick={switchLayout} title={tr('Прежний вид: протокол одним листом в три колонки')}><Icon name="columns" size={16} /> {tr('Одним листом')}</button>}
           />
           <HistoryDrawer open={drawer} onClose={() => setDrawer(false)} />
           <CalcModal open={calc} onClose={() => setCalc(false)} />
@@ -128,22 +129,22 @@ export function EncounterPage({ id, onDayHospital }: { id: string; onDayHospital
         <>
           <StickyHeader />
           <div className="visitbar">
-            <span className="visitbar__title">Протокол приёма одним листом</span>
-            <button type="button" className="btn btn--ghost btn--sm visitbar__toggle" onClick={switchLayout} title="Приём по страницам">
-              <Icon name="steps" /> По страницам
+            <span className="visitbar__title">{tr('Протокол приёма одним листом')}</span>
+            <button type="button" className="btn btn--ghost btn--sm visitbar__toggle" onClick={switchLayout} title={tr('Приём по страницам')}>
+              <Icon name="steps" /> {tr('По страницам')}
             </button>
           </div>
           <main className={`workspace${lightbox ? ' is-lightbox' : ''}`}>
-            <aside className="col col--left" aria-label="Визуализация и калькуляторы">
+            <aside className="col col--left" aria-label={tr('Визуализация и калькуляторы')}>
               <BodyMap />
               <BeforeAfter />
               <Calculators />
               <Timeline />
             </aside>
-            <section className="col col--center" aria-label="Протокол приема">
+            <section className="col col--center" aria-label={tr('Протокол приема')}>
               <SoapSheet />
             </section>
-            <aside className="col col--right" aria-label="Биллинг и документы">
+            <aside className="col col--right" aria-label={tr('Биллинг и документы')}>
               <BillingCart />
               <OutputDocs />
             </aside>

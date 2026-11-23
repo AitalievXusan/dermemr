@@ -6,6 +6,8 @@ import { mmss, timeHHMM } from '../../lib/format';
 import { Segmented } from '../ui/controls';
 import { Icon } from '../ui/Icon';
 import type { EncounterStatus, Theme } from '../../types';
+import { ageText, tr } from '../../lib/i18n';
+import { LangSwitch } from '../ui/Flags';
 
 function Timer() {
   const startedAt = useEnc((s) => s.startedAt);
@@ -16,22 +18,22 @@ function Timer() {
     const t = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(t);
   }, [status]);
-  return <span className="hdr__timer mono" title="Длительность приема">{status === 'WAITING' ? '00:00' : mmss(now - startedAt)}</span>;
+  return <span className="hdr__timer mono" title={tr('Длительность приема')}>{status === 'WAITING' ? '00:00' : mmss(now - startedAt)}</span>;
 }
 
 function SaveIndicator() {
   const saveState = useEnc((s) => s.saveState);
   const savedAt = useEnc((s) => s.savedAt);
   const text: Record<typeof saveState, ReactNode> = {
-    saved: savedAt ? <><span className="hdr__save-word">Сохранено </span>{timeHHMM(savedAt)}</> : 'Черновик',
-    pending: 'Изменения…',
-    saving: 'Сохранение…',
-    offline: 'Офлайн-режим: данные сохраняются локально',
-    conflict: 'Конфликт версий — обновите карту',
+    saved: savedAt ? <><span className="hdr__save-word">{tr('Сохранено')} </span>{timeHHMM(savedAt)}</> : tr('Черновик'),
+    pending: tr('Изменения…'),
+    saving: tr('Сохранение…'),
+    offline: tr('Офлайн-режим: данные сохраняются локально'),
+    conflict: tr('Конфликт версий — обновите карту'),
   };
   if (saveState === 'conflict')
     return (
-      <button type="button" className="hdr__save is-conflict link" title="Загрузить актуальную версию с сервера" onClick={() => void openEncounter(encounter.get().encounterId)}>
+      <button type="button" className="hdr__save is-conflict link" title={tr('Загрузить актуальную версию с сервера')} onClick={() => void openEncounter(encounter.get().encounterId)}>
         {text[saveState]}
       </button>
     );
@@ -65,31 +67,32 @@ export function StickyHeader() {
   return (
     <header className="hdr">
       {server.online && (
-        <a className="icon-btn hdr__back" href="#/" title="К очереди приема" aria-label="К очереди приема">
+        <a className="icon-btn hdr__back" href="#/" title={tr('К очереди приема')} aria-label={tr('К очереди приема')}>
           <Icon name="arrowLeft" />
         </a>
       )}
       <div className="hdr__patient">
         <h1 className="hdr__name">{p.fullName}</h1>
         <span className="hdr__meta">
-          {p.sex === 'F' ? 'Ж' : 'М'}, {formatAge(p.birthDate)}
+          {p.sex === 'F' ? tr('Ж') : tr('М')}, {ageText(formatAge(p.birthDate))}
         </span>
-        <span className="badge-rect" title="Фототип по Фитцпатрику">ФТ {p.fitzpatrick}</span>
-        <span className="hdr__card mono" title="Номер амбулаторной карты">{p.cardNumber}</span>
+        <span className="badge-rect" title={tr('Фототип по Фитцпатрику')}>{tr('ФТ')} {p.fitzpatrick}</span>
+        <span className="hdr__card mono" title={tr('Номер амбулаторной карты')}>{p.cardNumber}</span>
       </div>
 
-      <div className="hdr__alerts" aria-label="Клинические предохранители">
-        {p.allergies.length > 0 && <span className="alert-pill" title="Лекарственная аллергия">Аллергия: {p.allergies.join(', ')}</span>}
-        {p.isPregnantOrLactating && <span className="alert-pill">Беременность / лактация</span>}
-        {p.activeRetinoids && <span className="alert-pill alert-pill--warn" title="Текущий прием системных ретиноидов: контроль биохимии и теста на беременность">Ретиноиды: АЛТ / ХГЧ</span>}
+      <div className="hdr__alerts" aria-label={tr('Клинические предохранители')}>
+        {p.allergies.length > 0 && <span className="alert-pill" title={tr('Лекарственная аллергия')}>{tr('Аллергия')}: {p.allergies.join(', ')}</span>}
+        {p.isPregnantOrLactating && <span className="alert-pill">{tr('Беременность / лактация')}</span>}
+        {p.activeRetinoids && <span className="alert-pill alert-pill--warn" title={tr('Текущий прием системных ретиноидов: контроль биохимии и теста на беременность')}>{tr('Ретиноиды: АЛТ / ХГЧ')}</span>}
       </div>
 
       <div className="hdr__controls">
         <SaveIndicator />
-        <Segmented size="sm" ariaLabel="Статус визита" options={STATUS_OPTS} value={status === 'SIGNED' ? 'COMPLETED' : status} onChange={setStatus} />
+        <LangSwitch compact />
+        <Segmented size="sm" ariaLabel={tr('Статус визита')} options={STATUS_OPTS} value={status === 'SIGNED' ? 'COMPLETED' : status} onChange={setStatus} />
         <Segmented<Theme>
           size="sm"
-          ariaLabel="Тема"
+          ariaLabel={tr('Тема')}
           options={[{ value: 'light', label: 'Свет' }, { value: 'dark', label: 'Тьма' }]}
           value={theme}
           onChange={setTheme}
@@ -98,10 +101,10 @@ export function StickyHeader() {
         <button
           type="button"
           className="btn btn--ghost btn--sm"
-          title="Телемедицинская видеоконсультация (комната Jitsi Meet для этого визита)"
+          title={tr('Телемедицинская видеоконсультация (комната Jitsi Meet для этого визита)')}
           onClick={() => window.open(`https://meet.jit.si/dermemr-${encId}`, '_blank', 'noopener')}
         >
-          <Icon name="video" /> <span className="hdr__video-label">Видео</span>
+          <Icon name="video" /> <span className="hdr__video-label">{tr('Видео')}</span>
         </button>
       </div>
     </header>

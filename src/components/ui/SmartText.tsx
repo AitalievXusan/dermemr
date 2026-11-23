@@ -2,6 +2,7 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { MACROS, type Macro } from '../../data/templates';
 import { caretCoordinates } from '../../lib/caret';
+import { tr } from '../../lib/i18n';
 
 const SLASH_RE = /(^|\s)\/([\p{L}\d_]*)$/u;
 
@@ -136,7 +137,7 @@ export function SmartText({
                 </button>
               ))
             ) : (
-              <div className="slash__empty">Нет макросов «/{menu.query}»</div>
+              <div className="slash__empty">{tr('Нет макросов «/{q}»', { q: menu.query })}</div>
             )}
           </div>,
           document.body,

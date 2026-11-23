@@ -4,6 +4,7 @@ import { config, ROOT } from './config';
 import type { DbShape, EncounterRec, MediaRec } from './db';
 import { createEmptySoap, createInitialEncounter, EXTRA_PATIENTS, HISTORY, PREVIOUS_VISIT } from '../../src/data/mockEncounter';
 import { builtinDictionaries } from '../../src/data/dictionaries';
+import { findPrice, PRICE_LIST_VERSION } from '../../src/data/priceList';
 
 const iso = (d: string) => new Date(`${d}T10:00:00+05:00`).toISOString();
 
@@ -44,7 +45,7 @@ export function seedDb(): DbShape {
   ];
   // первичный прием: базовая услуга в корзине
   encounters.slice(3).forEach((e) => e.soap.plan.proceduresAndLabs.push({
-    id: `pr_base_${e.id}`, serviceCode: 'B01.008.001', name: 'Прием врача-дерматовенеролога первичный', category: 'RENDERED', quantity: 1, unitPrice: 3500, source: 'MANUAL',
+    id: `pr_base_${e.id}`, serviceCode: 'B01.008.001', name: findPrice('B01.008.001')!.name, category: 'RENDERED', quantity: 1, unitPrice: findPrice('B01.008.001')!.price, source: 'MANUAL',
   }));
 
   // Демо-снимки (процедурные, помечены «ДЕМО-СНИМОК»)
@@ -76,6 +77,6 @@ export function seedDb(): DbShape {
     deliveries: [],
     portal: [],
     linkTokens: [],
-    dictionaries: builtinDictionaries() as unknown as Record<string, unknown>,
+    dictionaries: { ...builtinDictionaries(), priceListVersion: PRICE_LIST_VERSION } as unknown as Record<string, unknown>,
   };
 }

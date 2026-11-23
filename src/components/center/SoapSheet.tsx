@@ -8,6 +8,7 @@ import { SectionO } from './SectionO';
 import { SectionP } from './SectionP';
 import { SectionS } from './SectionS';
 import { Dictation } from './Dictation';
+import { tr } from '../../lib/i18n';
 
 function TemplateSearch() {
   const [q, setQ] = useState('');
@@ -17,7 +18,7 @@ function TemplateSearch() {
   return (
     <div className="combo combo--bar">
       <span className="combo__icon"><Icon name="search" size={14} /></span>
-      <input className="input" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Шаблоны по нозологиям и макросы…" aria-label="Поиск шаблонов" onKeyDown={(e) => e.key === 'Escape' && setQ('')} />
+      <input className="input" value={q} onChange={(e) => setQ(e.target.value)} placeholder={tr('Шаблоны по нозологиям и макросы…')} aria-label={tr('Поиск шаблонов')} onKeyDown={(e) => e.key === 'Escape' && setQ('')} />
       {(tpl.length > 0 || macros.length > 0) && (
         <div className="combo__list">
           {tpl.map((t) => (
@@ -26,8 +27,8 @@ function TemplateSearch() {
             </button>
           ))}
           {macros.map((m) => (
-            <button key={m.key} type="button" className="combo__item" onMouseDown={(e) => { e.preventDefault(); navigator.clipboard?.writeText(m.text); setQ(''); }} title="Скопировать текст макроса">
-              <span className="mono">/{m.key}</span> {m.title} <span className="combo__price">в буфер</span>
+            <button key={m.key} type="button" className="combo__item" onMouseDown={(e) => { e.preventDefault(); navigator.clipboard?.writeText(m.text); setQ(''); }} title={tr('Скопировать текст макроса')}>
+              <span className="mono">/{m.key}</span> {m.title} <span className="combo__price">{tr('в буфер')}</span>
             </button>
           ))}
         </div>
@@ -40,7 +41,7 @@ function TemplateSearch() {
 export function SoapToolbar() {
   return (
     <div className="sheet__bar">
-      <div className="chips" role="toolbar" aria-label="Частые нозологии">
+      <div className="chips" role="toolbar" aria-label={tr('Частые нозологии')}>
         {QUICK_TEMPLATES.map((t) => (
           <button key={t.id} type="button" className="chip chip--nosology" onClick={() => void applyTemplateWithCdss(t)} title={`${t.icd10Code} · ${t.title}`}>
             {t.quickLabel}
@@ -57,14 +58,14 @@ export function SoapSheet() {
   return (
     <div className="sheet">
       <SoapToolbar />
-      <article className="sheet__paper" aria-label="Протокол SOAP">
+      <article className="sheet__paper" aria-label={tr('Протокол SOAP')}>
         <SectionS />
         <SectionO />
         <SectionA />
         <GuidelinePanel />
         <SectionP />
         <p className="sheet__foot">
-          <span className="mono">/</span> — макросы в любом поле · <span className="mono">Ctrl+S</span> — сохранить · <span className="mono">Ctrl+Enter</span> — завершить и сформировать документы
+          <span className="mono">/</span> {tr('— макросы в любом поле ·')} <span className="mono">Ctrl+S</span> {tr('— сохранить ·')} <span className="mono">Ctrl+Enter</span> {tr('— завершить и сформировать документы')}
         </p>
       </article>
     </div>

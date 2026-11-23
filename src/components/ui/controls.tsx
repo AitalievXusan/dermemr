@@ -1,4 +1,5 @@
 import { useLayoutEffect, useRef, useState, type ReactNode } from 'react';
+import { tr } from '../../lib/i18n';
 
 /** Приборный сегментный переключатель со скользящим ползунком (DESIGN §4.3). */
 export function Segmented<T extends string>({
@@ -43,7 +44,7 @@ export function Segmented<T extends string>({
           className={`seg__btn${o.value === value ? ' is-active' : ''}`}
           onClick={() => onChange(o.value)}
         >
-          {o.label}
+          {typeof o.label === 'string' ? tr(o.label) : o.label}
         </button>
       ))}
     </div>
@@ -53,7 +54,7 @@ export function Segmented<T extends string>({
 export function Chip({ active, onClick, children, title }: { active?: boolean; onClick?: () => void; children: ReactNode; title?: string }) {
   return (
     <button type="button" title={title} className={`chip${active ? ' is-active' : ''}`} onClick={onClick} aria-pressed={!!active}>
-      {children}
+      {typeof children === 'string' ? tr(children) : children}
     </button>
   );
 }
@@ -73,9 +74,9 @@ export function ChipGroup<T extends string>({ items, selected, onToggle }: { ite
 export function Stepper({ value, onChange, min = 0 }: { value: number; onChange: (v: number) => void; min?: number }) {
   return (
     <span className="stepper">
-      <button type="button" aria-label="Уменьшить" onClick={() => onChange(Math.max(min, value - 1))}>−</button>
+      <button type="button" aria-label={tr('Уменьшить')} onClick={() => onChange(Math.max(min, value - 1))}>−</button>
       <span className="mono">{value}</span>
-      <button type="button" aria-label="Увеличить" onClick={() => onChange(value + 1)}>+</button>
+      <button type="button" aria-label={tr('Увеличить')} onClick={() => onChange(value + 1)}>+</button>
     </span>
   );
 }
@@ -85,7 +86,7 @@ export function Checkbox({ checked, onChange, children, disabled }: { checked: b
     <label className={`check${disabled ? ' is-disabled' : ''}`}>
       <input type="checkbox" checked={checked} disabled={disabled} onChange={(e) => onChange(e.target.checked)} />
       <span className="check__box" aria-hidden="true" />
-      <span>{children}</span>
+      <span>{typeof children === 'string' ? tr(children) : children}</span>
     </label>
   );
 }
@@ -93,7 +94,7 @@ export function Checkbox({ checked, onChange, children, disabled }: { checked: b
 export function Field({ label, children, inline }: { label: string; children: ReactNode; inline?: boolean }) {
   return (
     <label className={`field${inline ? ' field--inline' : ''}`}>
-      <span className="field__label">{label}</span>
+      <span className="field__label">{tr(label)}</span>
       {children}
     </label>
   );

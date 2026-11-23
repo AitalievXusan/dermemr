@@ -1,3 +1,4 @@
+import { setLang, useLang } from '../../lib/i18n';
 // Флаги для переключателя языка (Рус / Ўзб).
 const frame = { display: 'block', borderRadius: 2, boxShadow: '0 0 0 1px rgba(25,56,44,.18)', flex: 'none' } as const;
 
@@ -23,5 +24,16 @@ export function FlagUz({ size = 24 }: { size?: number }) {
       <circle cx="5" cy="2.55" r="1.5" fill="#0099B5" />
       {[[7.6, 1.6], [8.8, 1.6], [7.6, 3.4], [8.8, 3.4], [10, 2.5]].map(([cx, cy]) => <circle key={`${cx}-${cy}`} cx={cx} cy={cy} r="0.4" fill="#ffffff" />)}
     </svg>
+  );
+}
+
+/** Переключатель языка интерфейса с флагами. */
+export function LangSwitch({ compact = false }: { compact?: boolean }) {
+  const lang = useLang();
+  return (
+    <div className={`langsw${compact ? ' langsw--compact' : ''}`} role="group" aria-label="Язык / Тил">
+      <button type="button" aria-pressed={lang === 'ru'} className={lang === 'ru' ? 'is-on' : ''} onClick={() => setLang('ru')} title="Русский"><FlagRu size={22} />{!compact && ' Рус'}</button>
+      <button type="button" aria-pressed={lang === 'uz'} className={lang === 'uz' ? 'is-on' : ''} onClick={() => setLang('uz')} title="Ўзбекча"><FlagUz size={22} />{!compact && ' Ўзб'}</button>
+    </div>
   );
 }

@@ -6,6 +6,7 @@ import { PROJECTIONS, PROJECTION_LABELS, type Shape } from './anatomy';
 import { FigureArt, FigureClips } from './FigureArt';
 import type { LesionType, Projection } from '../../types';
 import { LESION_LABELS } from '../../lib/clinicalText';
+import { tr } from '../../lib/i18n';
 
 
 function ShapeEl({ s, ...rest }: { s: Shape } & SVGProps<SVGElement>) {
@@ -36,7 +37,7 @@ export function ProjectionCanvas({ projection, onHover, className = '' }: { proj
 
   return (
     <div className={`bodymap__stage ${className}`} style={{ aspectRatio: `${vw} / ${vh}` }}>
-      <svg ref={svgRef} viewBox={`0 0 ${vw} ${vh}`} className="bodymap__svg" role="img" aria-label={`Схема тела: ${PROJECTION_LABELS[projection]}`}>
+      <svg ref={svgRef} viewBox={`0 0 ${vw} ${vh}`} className="bodymap__svg" role="img" aria-label={`${tr('Схема тела')}: ${tr(PROJECTION_LABELS[projection])}`}>
         {def.figure && <FigureClips prefix={clipId} />}
         {def.figure && <FigureArt figure={def.figure} />}
         {def.zones.map((z) => (
@@ -71,14 +72,14 @@ export function BodyMap({ large = false }: { large?: boolean }) {
   const def = PROJECTIONS[projection];
 
   return (
-    <section className="panel" aria-label="Карта тела">
+    <section className="panel" aria-label={tr('Карта тела')}>
       <div className="panel__head">
-        <h2 className="panel__title">Карта тела</h2>
-        <span className="panel__hint">{hover ?? 'Клик по зоне — маркер очага'}</span>
+        <h2 className="panel__title">{tr('Карта тела')}</h2>
+        <span className="panel__hint">{hover ?? tr('Клик по зоне — маркер очага')}</span>
       </div>
       <Segmented<Projection>
         size="sm"
-        ariaLabel="Проекция"
+        ariaLabel={tr('Проекция')}
         options={(Object.keys(PROJECTION_LABELS) as Projection[]).map((p) => ({ value: p, label: PROJECTION_LABELS[p] }))}
         value={projection}
         onChange={setProjection}
@@ -97,7 +98,7 @@ export function BodyMap({ large = false }: { large?: boolean }) {
         <ul className="markers">
           {[...markers].sort((a, b) => a.number - b.number).map((m) => (
             <li key={m.id} className={`markers__row${m.projection === projection ? '' : ' is-other'}`}>
-              <button type="button" className="marker marker--static mono" onClick={() => setProjection(m.projection)} title={`Показать на проекции «${PROJECTION_LABELS[m.projection]}»`}>
+              <button type="button" className="marker marker--static mono" onClick={() => setProjection(m.projection)} title={tr('Показать на проекции «{p}»', { p: tr(PROJECTION_LABELS[m.projection]) })}>
                 {m.number}
               </button>
               <span className="markers__label">{m.anatomyLabel}</span>
@@ -105,13 +106,13 @@ export function BodyMap({ large = false }: { large?: boolean }) {
                 className="select select--xs"
                 value={m.lesionType}
                 onChange={(e) => updateMarker(m.id, { lesionType: e.target.value as LesionType })}
-                aria-label={`Тип элемента очага ${m.number}`}
+                aria-label={tr('Элемент очага {n}', { n: m.number })}
               >
                 {(Object.keys(LESION_LABELS) as LesionType[]).map((t) => (
-                  <option key={t} value={t}>{LESION_LABELS[t]}</option>
+                  <option key={t} value={t}>{tr(LESION_LABELS[t])}</option>
                 ))}
               </select>
-              <button type="button" className="icon-btn" onClick={() => removeMarker(m.id)} aria-label={`Удалить маркер ${m.number}`}>
+              <button type="button" className="icon-btn" onClick={() => removeMarker(m.id)} aria-label={tr('Удалить очаг {n}', { n: m.number })}>
                 <Icon name="x" size={14} />
               </button>
             </li>

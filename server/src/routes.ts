@@ -13,7 +13,8 @@ import { mobileUploadPage, verifyPage } from './pages';
 import { qrSvg } from '../../src/lib/qr';
 import { checkDrug } from '../../src/lib/cdss';
 import { findDrug } from '../../src/data/drugs';
-import { applyDictionaries, type Dictionaries } from '../../src/data/dictionaries';
+import { applyDictionaries, builtinDictionaries, type Dictionaries } from '../../src/data/dictionaries';
+import { findPrice, PRICE_LIST_VERSION } from '../../src/data/priceList';
 import { createEmptySoap } from '../../src/data/mockEncounter';
 import { verificationHash, CLINIC } from '../../src/components/documents/Documents';
 import { formatAge } from '../../src/lib/calculators';
@@ -188,7 +189,8 @@ export function registerRoutes() {
     db().patients.push(patient);
     const now = new Date().toISOString();
     const soap = createEmptySoap();
-    soap.plan.proceduresAndLabs.push({ id: newId('pr'), serviceCode: 'B01.008.001', name: 'Прием врача-дерматовенеролога первичный', category: 'RENDERED', quantity: 1, unitPrice: 3500, source: 'MANUAL' });
+    const consult = findPrice('B01.008.001');
+    if (consult) soap.plan.proceduresAndLabs.push({ id: newId('pr'), serviceCode: consult.code, name: consult.name, category: 'RENDERED', quantity: 1, unitPrice: consult.price, source: 'MANUAL' });
     const enc: EncounterRec = {
       id: newId('enc'), patientId: patient.id, doctorId: 'doc_sokolova', appointmentType: 'PRIMARY', status: 'WAITING', startedAt: null,
       completedAt: null, draftVersion: 1, soap, markers: [], billing: { status: 'DRAFT', payerType: 'CASH', discountPercent: 0, sentAt: null },
@@ -530,5 +532,28 @@ export function registerRoutes() {
 
 /** Подключает справочники из хранилища ко всему серверному коду (CDSS, шаблоны). */
 export function applyStoredDictionaries() {
-  applyDictionaries(db().dictionaries as unknown as Dictionaries);
+  const d = db().dictionaries as unknown as Dictionaries & { priceListVersion?: string };
+  if (d.priceListVersion !== PRICE_LIST_VERSION) migratePrices(d);
+  applyDictionaries(d);
+}
+
+/**
+ * Переход на прейскурант клиники в сумах: заменить сохранённый прайс и обновить цены в незавершённых визитах
+ * (раньше цены были демонстрационные, в рублях). Завершённые визиты и оплаченные счета не меняются.
+ */
+function migratePrices(d: Dictionaries & { priceListVersion?: string }) {
+  d.priceList = builtinDictionaries().priceList;
+  d.priceListVersion = PRICE_LIST_VERSION;
+  const byCode = new Map(d.priceList.map((p) => [p.code, p]));
+  db().encounters.filter((e) => !isDone(e) && e.billing.status !== 'PAID').forEach((e) => {
+    e.soap.plan.proceduresAndLabs.forEach((it) => {
+      const p = byCode.get(it.serviceCode);
+      it.unitPrice = p?.price ?? 0;
+      if (p) it.name = p.name;
+      if (p?.note) it.priceNote = p.note;
+      else if (!p) it.priceNote = 'нет в прайсе — впишите цену';
+    });
+  });
+  saveDb();
+  console.log(`  Прайс обновлён: ${d.priceList.length} позиций, цены в сумах (${PRICE_LIST_VERSION})`);
 }

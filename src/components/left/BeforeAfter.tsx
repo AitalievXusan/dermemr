@@ -4,6 +4,7 @@ import { createQrSession, patchMedia, server, uploadMedia } from '../../lib/api'
 import { dateRu } from '../../lib/format';
 import { Icon } from '../ui/Icon';
 import { addUpload, media, useMedia } from './media';
+import { tr } from '../../lib/i18n';
 
 /** Шторка сравнения «До / После» в калиброванной нейтральной рамке (DESIGN §1.1 п.5, §5.2 Б). */
 export function BeforeAfter() {
@@ -38,17 +39,17 @@ export function BeforeAfter() {
   const marker = markers.find((m) => m.id === selected);
 
   return (
-    <section ref={panelRef} className={`panel${lightbox ? ' panel--lightbox' : ''}`} aria-label="Сравнение До / После">
+    <section ref={panelRef} className={`panel${lightbox ? ' panel--lightbox' : ''}`} aria-label={tr('Сравнение До / После')}>
       <div className="panel__head">
-        <h2 className="panel__title">До / После</h2>
+        <h2 className="panel__title">{tr('До / После')}</h2>
         <div className="panel__actions">
-          <button type="button" className="btn btn--ghost btn--xs" onClick={() => fileRef.current?.click()} title="Загрузить снимок с ПК или дерматоскопа">
-            <Icon name="upload" size={14} /> Фото
+          <button type="button" className="btn btn--ghost btn--xs" onClick={() => fileRef.current?.click()} title={tr('Загрузить снимок с ПК или дерматоскопа')}>
+            <Icon name="upload" size={14} /> {tr('Фото')}
           </button>
           <button
             type="button"
             className="btn btn--ghost btn--xs"
-            title={server.online ? 'Загрузка со смартфона по QR-коду' : 'Доступно при запуске с сервером (npm start)'}
+            title={server.online ? tr('Загрузка со смартфона по QR-коду') : tr('Доступно при запуске с сервером (npm start)')}
             disabled={!server.online}
             onClick={async () => {
               await flushSave(); // маркеры должны быть на сервере, чтобы телефон их видел
@@ -62,7 +63,7 @@ export function BeforeAfter() {
             type="button"
             className="icon-btn"
             onClick={() => ui.set((u) => { u.lightbox = !u.lightbox; })}
-            aria-label={lightbox ? 'Свернуть' : 'Развернуть'}
+            aria-label={lightbox ? tr('Свернуть') : tr('Развернуть')}
           >
             <Icon name={lightbox ? 'x' : 'maximize'} size={14} />
           </button>
@@ -79,7 +80,7 @@ export function BeforeAfter() {
             if (!server.online) return addUpload(f, selected);
             void uploadMedia(encounter.get().encounterId, f, selected)
               .then(() => refreshMedia())
-              .catch((err: Error) => toast(`Не удалось загрузить снимок: ${err.message}`, 'danger'));
+              .catch((err: Error) => toast(`${tr('Не удалось загрузить снимок')}: ${err.message}`, 'danger'));
           }}
         />
       </div>
@@ -88,7 +89,7 @@ export function BeforeAfter() {
         className="select select--xs"
         value={selected ?? ''}
         onChange={(e) => media.set((m) => { m.selectedMarker = e.target.value || null; })}
-        aria-label="Очаг для сравнения"
+        aria-label={tr('Очаг для сравнения')}
       >
         {markers.map((m) => (
           <option key={m.id} value={m.id}>#{m.number} {m.anatomyLabel}</option>
@@ -110,13 +111,13 @@ export function BeforeAfter() {
       >
         {after ? (
           <>
-            <img className="compare__img" src={after.url} alt={`Снимок ${dateRu(after.date)}`} draggable={false} />
+            <img className="compare__img" src={after.url} alt={`${tr('Снимок')} ${dateRu(after.date)}`} draggable={false} />
             {before && (
               <>
                 <img
                   className="compare__img compare__img--before"
                   src={before.url}
-                  alt={`Снимок ${dateRu(before.date)}`}
+                  alt={`${tr('Снимок')} ${dateRu(before.date)}`}
                   style={{ clipPath: `inset(0 ${100 - pos}% 0 0)` }}
                   draggable={false}
                 />
@@ -131,7 +132,7 @@ export function BeforeAfter() {
         ) : (
           <div className="compare__empty">
             <Icon name="image" />
-            <span>Нет снимков для {marker ? `#${marker.number}` : 'очага'}</span>
+            <span>{tr('Нет снимков для')} {marker ? `#${marker.number}` : tr('очага')}</span>
           </div>
         )}
       </div>
@@ -147,10 +148,10 @@ export function BeforeAfter() {
             }}
           />
           <span className="check__box" aria-hidden="true" />
-          <span>Включить снимок {dateRu(after.date)} в PDF</span>
+          <span>{tr('Включить снимок {date} в PDF', { date: dateRu(after.date) })}</span>
         </label>
       )}
-      {lightbox && <p className="panel__hint">Esc — закрыть. Протокол SOAP остается доступным для ввода.</p>}
+      {lightbox && <p className="panel__hint">{tr('Esc — закрыть. Протокол SOAP остается доступным для ввода.')}</p>}
     </section>
   );
 }

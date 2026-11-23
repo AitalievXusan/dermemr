@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { ui, updateSoap, useUi } from '../../state';
 import { Icon } from './Icon';
+import { tr } from '../../lib/i18n';
 
 /** Строгий стоп-экран CDSS (DESIGN §6.2): рамка 2px status-danger-text. */
 export function CdssModal() {
@@ -18,11 +19,11 @@ export function CdssModal() {
     close();
   };
   return (
-    <div className="overlay overlay--stop" role="alertdialog" aria-modal="true" aria-label="Клинический конфликт">
+    <div className="overlay overlay--stop" role="alertdialog" aria-modal="true" aria-label={tr('Клинический конфликт')}>
       <div className={`stop${blocking ? '' : ' stop--warn'}`}>
         <div className="stop__head">
           <Icon name="alert" />
-          <h2>{blocking ? 'Назначение заблокировано' : 'Предупреждение CDSS'}</h2>
+          <h2>{blocking ? tr('Назначение заблокировано') : tr('Предупреждение CDSS')}</h2>
         </div>
         <p className="stop__drug">{cdss.drugName}</p>
         <ul className="stop__list">
@@ -33,11 +34,11 @@ export function CdssModal() {
         <div className="stop__actions">
           {blocking ? (
             <>
-              <button type="button" className="btn btn--danger" onClick={cancel} autoFocus>Отменить назначение</button>
-              <button type="button" className="btn btn--ghost" onClick={close}>Назначить под ответственность врача</button>
+              <button type="button" className="btn btn--danger" onClick={cancel} autoFocus>{tr('Отменить назначение')}</button>
+              <button type="button" className="btn btn--ghost" onClick={close}>{tr('Назначить под ответственность врача')}</button>
             </>
           ) : (
-            <button type="button" className="btn btn--outline" onClick={close} autoFocus>Понятно</button>
+            <button type="button" className="btn btn--outline" onClick={close} autoFocus>{tr('Понятно')}</button>
           )}
         </div>
       </div>
@@ -72,19 +73,19 @@ export function QrModal() {
   const left = Math.max(0, qr.expiresAt - now);
   const close = () => ui.set((u) => { u.qr = null; });
   return (
-    <div className="overlay" role="dialog" aria-modal="true" aria-label="Загрузка со смартфона" onMouseDown={(e) => e.target === e.currentTarget && close()}>
+    <div className="overlay" role="dialog" aria-modal="true" aria-label={tr('Загрузка со смартфона')} onMouseDown={(e) => e.target === e.currentTarget && close()}>
       <div className="qrbox">
         <div className="panel__head">
-          <h2 className="panel__title">Снимок со смартфона</h2>
-          <button type="button" className="icon-btn" onClick={close} aria-label="Закрыть"><Icon name="x" /></button>
+          <h2 className="panel__title">{tr('Снимок со смартфона')}</h2>
+          <button type="button" className="icon-btn" onClick={close} aria-label={tr('Закрыть')}><Icon name="x" /></button>
         </div>
         <div className="qrbox__code" dangerouslySetInnerHTML={{ __html: qr.svg }} />
         <ol className="qrbox__steps">
-          <li>Наведите камеру смартфона на код (телефон в той же Wi-Fi сети, что и этот компьютер).</li>
-          <li>Выберите очаг и сделайте снимок — он сразу появится в карте.</li>
+          <li>{tr('Наведите камеру смартфона на код (телефон в той же Wi-Fi сети, что и этот компьютер).')}</li>
+          <li>{tr('Выберите очаг и сделайте снимок — он сразу появится в карте.')}</li>
         </ol>
         <p className="qrbox__url mono">{qr.url.replace(/\?t=.*/, '?t=…')}</p>
-        <p className="panel__hint">{left > 0 ? `Ссылка действует ещё ${Math.floor(left / 60000)}:${String(Math.floor((left % 60000) / 1000)).padStart(2, '0')}` : 'Срок действия истек — откройте QR заново'} · ожидаем снимок…</p>
+        <p className="panel__hint">{left > 0 ? `${tr('Ссылка действует ещё')} ${Math.floor(left / 60000)}:${String(Math.floor((left % 60000) / 1000)).padStart(2, '0')}` : tr('Срок действия истек — откройте QR заново')} · {tr('ожидаем снимок…')}</p>
       </div>
     </div>
   );

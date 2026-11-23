@@ -7,6 +7,7 @@ import {
 } from '../../lib/calculators';
 import { Segmented } from '../ui/controls';
 import type { CalcKey } from '../../types';
+import { tr } from '../../lib/i18n';
 
 const range = (n: number) => Array.from({ length: n }, (_, i) => i);
 const AREA_HINT = ['0%', '<10%', '10–29%', '30–49%', '50–69%', '70–89%', '90–100%'];
@@ -32,14 +33,14 @@ function Result({ calc, score, max, sev, onInsert, extra }: { calc: CalcKey; sco
         <span className={`calc__value mono sev-${sev.level}`}>
           {calc}: {Number.isInteger(score) ? score : score.toFixed(1)}
         </span>
-        <span className="calc__label">{sev.label}{extra ? ` · ${extra}` : ''}</span>
+        <span className="calc__label">{tr(sev.label)}{extra ? ` · ${extra}` : ''}</span>
       </div>
       <div className="sevscale" aria-hidden="true">
         <span className="sevscale__tick" style={{ left: `${frac * 100}%` }} />
       </div>
       <div className="calc__foot">
         <span className="muted mono">0–{max}</span>
-        <button type="button" className="btn btn--outline btn--xs" onClick={onInsert}>Вставить в диагноз</button>
+        <button type="button" className="btn btn--outline btn--xs" onClick={onInsert}>{tr('Вставить в диагноз')}</button>
       </div>
     </div>
   );
@@ -56,15 +57,15 @@ function Pasi() {
   return (
     <>
       <table className="calc__table">
-        <thead><tr><th /><th>E</th><th>I</th><th>D</th><th title="Площадь">A</th></tr></thead>
+        <thead><tr><th /><th>E</th><th>I</th><th>D</th><th title={tr('Площадь')}>A</th></tr></thead>
         <tbody>
           {(Object.keys(PASI_REGION_LABELS) as PasiRegion[]).map((r) => (
             <tr key={r}>
-              <th scope="row">{PASI_REGION_LABELS[r]}</th>
+              <th scope="row">{tr(PASI_REGION_LABELS[r])}</th>
               {(['E', 'I', 'D'] as const).map((k) => (
-                <td key={k}><Num value={v[r][k]} max={4} onChange={(n) => set(r, k, n)} label={`${PASI_REGION_LABELS[r]} ${k}`} /></td>
+                <td key={k}><Num value={v[r][k]} max={4} onChange={(n) => set(r, k, n)} label={`${tr(PASI_REGION_LABELS[r])} ${k}`} /></td>
               ))}
-              <td><Num value={v[r].A} max={6} onChange={(n) => set(r, 'A', n)} label={`${PASI_REGION_LABELS[r]} площадь ${AREA_HINT[v[r].A]}`} /></td>
+              <td><Num value={v[r].A} max={6} onChange={(n) => set(r, 'A', n)} label={`${tr(PASI_REGION_LABELS[r])} ${tr('площадь')} ${AREA_HINT[v[r].A]}`} /></td>
             </tr>
           ))}
         </tbody>
@@ -87,20 +88,20 @@ function Scorad() {
   const sev = scoradSeverity(score);
   return (
     <>
-      <label className="field field--inline"><span className="field__label">A · площадь, %</span>
+      <label className="field field--inline"><span className="field__label">{tr('A · площадь, %')}</span>
         <input className="input input--xs mono" type="number" min={0} max={100} value={area} onChange={(e) => setArea(Number(e.target.value))} />
       </label>
       <div className="calc__grid">
         {SCORAD_SIGNS.map((s, i) => (
-          <label key={s} className="calc__cell"><span>{s}</span>
-            <Num value={b[i]} max={3} label={s} onChange={(n) => setB((p) => p.map((x, j) => (j === i ? n : x)))} />
+          <label key={s} className="calc__cell"><span>{tr(s)}</span>
+            <Num value={b[i]} max={3} label={tr(s)} onChange={(n) => setB((p) => p.map((x, j) => (j === i ? n : x)))} />
           </label>
         ))}
       </div>
-      <label className="field field--inline"><span className="field__label">Зуд <span className="mono">{itch}</span></span>
+      <label className="field field--inline"><span className="field__label">{tr('Зуд')} <span className="mono">{itch}</span></span>
         <input type="range" min={0} max={10} value={itch} onChange={(e) => setItch(Number(e.target.value))} />
       </label>
-      <label className="field field--inline"><span className="field__label">Сон <span className="mono">{sleep}</span></span>
+      <label className="field field--inline"><span className="field__label">{tr('Сон')} <span className="mono">{sleep}</span></span>
         <input type="range" min={0} max={10} value={sleep} onChange={(e) => setSleep(Number(e.target.value))} />
       </label>
       <Result calc="SCORAD" score={score} max={103} sev={sev} onInsert={() => insertCalculator('SCORAD', { score, label: sev.label }, sev.level)} />
@@ -117,9 +118,9 @@ function Gags() {
       <div className="calc__grid">
         {GAGS_ZONES.map((z, i) => (
           <label key={z.key} className="calc__cell">
-            <span>{z.label} <span className="muted mono">×{z.factor}</span></span>
-            <select className="select select--xs" value={g[i]} aria-label={z.label} onChange={(e) => setG((p) => p.map((x, j) => (j === i ? Number(e.target.value) : x)))}>
-              {GAGS_GRADES.map((label, n) => <option key={n} value={n}>{n} · {label}</option>)}
+            <span>{tr(z.label)} <span className="muted mono">×{z.factor}</span></span>
+            <select className="select select--xs" value={g[i]} aria-label={tr(z.label)} onChange={(e) => setG((p) => p.map((x, j) => (j === i ? Number(e.target.value) : x)))}>
+              {GAGS_GRADES.map((label, n) => <option key={n} value={n}>{n} · {tr(label)}</option>)}
             </select>
           </label>
         ))}
@@ -137,8 +138,8 @@ function Dlqi() {
     <>
       <div className="calc__grid">
         {DLQI_QUESTIONS.map((q, i) => (
-          <label key={q} className="calc__cell"><span>{i + 1}. {q}</span>
-            <Num value={a[i]} max={3} label={q} onChange={(n) => setA((p) => p.map((x, j) => (j === i ? n : x)))} />
+          <label key={q} className="calc__cell"><span>{i + 1}. {tr(q)}</span>
+            <Num value={a[i]} max={3} label={tr(q)} onChange={(n) => setA((p) => p.map((x, j) => (j === i ? n : x)))} />
           </label>
         ))}
       </div>
@@ -158,15 +159,15 @@ function Easi() {
   return (
     <>
       <table className="calc__table">
-        <thead><tr><th /><th title="Эритема">E</th><th title="Отек / папулы">I</th><th title="Экскориации">Ex</th><th title="Лихенификация">L</th><th title="Площадь">A</th></tr></thead>
+        <thead><tr><th /><th title={tr('Эритема')}>E</th><th title={tr('Отек / папулы')}>I</th><th title={tr('Экскориации')}>Ex</th><th title={tr('Лихенификация')}>L</th><th title={tr('Площадь')}>A</th></tr></thead>
         <tbody>
           {(Object.keys(PASI_REGION_LABELS) as EasiRegion[]).map((r) => (
             <tr key={r}>
-              <th scope="row">{PASI_REGION_LABELS[r]}</th>
+              <th scope="row">{tr(PASI_REGION_LABELS[r])}</th>
               {(['E', 'I', 'Ex', 'L'] as const).map((k) => (
-                <td key={k}><Num value={v[r][k]} max={3} onChange={(n) => set(r, k, n)} label={`${PASI_REGION_LABELS[r]} ${k}`} /></td>
+                <td key={k}><Num value={v[r][k]} max={3} onChange={(n) => set(r, k, n)} label={`${tr(PASI_REGION_LABELS[r])} ${k}`} /></td>
               ))}
-              <td><Num value={v[r].A} max={6} onChange={(n) => set(r, 'A', n)} label={`${PASI_REGION_LABELS[r]} площадь`} /></td>
+              <td><Num value={v[r].A} max={6} onChange={(n) => set(r, 'A', n)} label={`${tr(PASI_REGION_LABELS[r])} ${tr('площадь')}`} /></td>
             </tr>
           ))}
         </tbody>
@@ -174,7 +175,7 @@ function Easi() {
       <label className="check check--sm">
         <input type="checkbox" checked={child} onChange={(e) => setChild(e.target.checked)} />
         <span className="check__box" aria-hidden="true" />
-        <span>Ребенок 0–7 лет (веса 0.2 / 0.2 / 0.3 / 0.3)</span>
+        <span>{tr('Ребенок 0–7 лет (веса 0.2 / 0.2 / 0.3 / 0.3)')}</span>
       </label>
       <Result calc="EASI" score={score} max={72} sev={sev} onInsert={() => insertCalculator('EASI', { score, label: sev.label }, sev.level)} />
     </>
@@ -190,13 +191,13 @@ function Uas7() {
   return (
     <>
       <table className="calc__table">
-        <thead><tr><th /><th title="Количество волдырей 0–3">Волдыри</th><th title="Интенсивность зуда 0–3">Зуд</th></tr></thead>
+        <thead><tr><th /><th title={tr('Количество волдырей 0–3')}>{tr('Волдыри')}</th><th title={tr('Интенсивность зуда 0–3')}>{tr('Зуд')}</th></tr></thead>
         <tbody>
           {DAYS.map((day, i) => (
             <tr key={day}>
-              <th scope="row">{day}</th>
-              <td><Num value={d[i][0]} max={3} onChange={(n) => set(i, 0, n)} label={`${day} волдыри`} /></td>
-              <td><Num value={d[i][1]} max={3} onChange={(n) => set(i, 1, n)} label={`${day} зуд`} /></td>
+              <th scope="row">{tr(day)}</th>
+              <td><Num value={d[i][0]} max={3} onChange={(n) => set(i, 0, n)} label={`${tr(day)} ${tr('волдыри')}`} /></td>
+              <td><Num value={d[i][1]} max={3} onChange={(n) => set(i, 1, n)} label={`${tr(day)} ${tr('зуд')}`} /></td>
             </tr>
           ))}
         </tbody>
@@ -210,8 +211,8 @@ export function Calculators() {
   const [tab, setTab] = useState<CalcKey>('PASI');
   const body = useMemo(() => ({ PASI: <Pasi />, SCORAD: <Scorad />, EASI: <Easi />, GAGS: <Gags />, DLQI: <Dlqi />, UAS7: <Uas7 /> }), []);
   return (
-    <section className="panel" aria-label="Клинические калькуляторы">
-      <div className="panel__head"><h2 className="panel__title">Калькуляторы</h2></div>
+    <section className="panel" aria-label={tr('Клинические калькуляторы')}>
+      <div className="panel__head"><h2 className="panel__title">{tr('Калькуляторы')}</h2></div>
       <div className="calc__tabs">
         <Segmented<CalcKey> size="sm" options={(['PASI', 'SCORAD', 'EASI', 'GAGS', 'DLQI', 'UAS7'] as CalcKey[]).map((k) => ({ value: k, label: k }))} value={tab} onChange={setTab} />
       </div>

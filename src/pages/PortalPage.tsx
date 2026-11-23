@@ -4,6 +4,7 @@ import { navigate } from '../lib/router';
 import { dateRu } from '../lib/format';
 import { Icon } from '../components/ui/Icon';
 import { TopBar } from './QueuePage';
+import { tr } from '../lib/i18n';
 
 /** Демо Личного кабинета пациента: опубликованные документы и назначения. */
 export function PortalPage({ patientId }: { patientId: string | null }) {
@@ -18,20 +19,20 @@ export function PortalPage({ patientId }: { patientId: string | null }) {
 
   return (
     <div className="page">
-      <TopBar title="Личный кабинет пациента" />
+      <TopBar title={tr('Личный кабинет пациента')} />
       <div className="page__body portal">
         <label className="field">
-          <span className="field__label">Пациент (в реальном ЛК — после входа по SMS)</span>
+          <span className="field__label">{tr('Пациент (в реальном ЛК — после входа по SMS)')}</span>
           <select className="select" value={patientId ?? ''} onChange={(e) => navigate(`/portal/${e.target.value}`)}>
-            <option value="">Выберите пациента…</option>
+            <option value="">{tr('Выберите пациента…')}</option>
             {patients.map((p) => <option key={p.id} value={p.id}>{p.fullName} · {p.cardNumber}</option>)}
           </select>
         </label>
-        {data && !data.records.length && <p className="muted">Документов пока нет. Врач публикует их кнопкой «Личный кабинет».</p>}
+        {data && !data.records.length && <p className="muted">{tr('Документов пока нет. Врач публикует их кнопкой «Личный кабинет».')}</p>}
         {data?.records.map((r) => (
           <article key={r.encounterId + r.publishedAt} className="panel">
             <div className="panel__head">
-              <h2 className="panel__title">Прием дерматолога · {dateRu(r.publishedAt)}</h2>
+              <h2 className="panel__title">{tr('Приём дерматолога')} · {dateRu(r.publishedAt)}</h2>
             </div>
             <p className="portal__dx">{r.diagnosis}</p>
             <ul className="portal__docs">
@@ -43,8 +44,8 @@ export function PortalPage({ patientId }: { patientId: string | null }) {
                 </li>
               ))}
             </ul>
-            {r.prescribed.length > 0 && <p className="muted">Сдать до визита: {r.prescribed.join('; ')}</p>}
-            {r.followUpDays ? <p className="muted">Контрольный визит через {r.followUpDays} дн.</p> : null}
+            {r.prescribed.length > 0 && <p className="muted">{tr('Сдать до визита')}: {r.prescribed.join('; ')}</p>}
+            {r.followUpDays ? <p className="muted">{tr('Контрольный визит через {n} дн.', { n: r.followUpDays })}</p> : null}
           </article>
         ))}
       </div>

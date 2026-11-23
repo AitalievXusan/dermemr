@@ -116,6 +116,8 @@ export interface ProcedureItem {
   quantity: number;
   unitPrice: number;
   source: 'AUTO_FROM_SOAP' | 'MANUAL';
+  /** Пометка к цене из прайса: диапазон «от–до», цена в долларах, «нет в прайсе». */
+  priceNote?: string;
 }
 
 export interface CalcResult {

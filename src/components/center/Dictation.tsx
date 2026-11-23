@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { toast } from '../../state';
 import { insertIntoActiveField } from '../ui/SmartText';
 import { Icon } from '../ui/Icon';
+import { tr } from '../../lib/i18n';
 
 // Голосовой ввод (PRD этап 3): Web Speech API браузера (Chrome / Edge), язык ru-RU.
 // Текст вставляется в последнее активное поле протокола. Автоматическая раскладка
@@ -35,12 +36,12 @@ export function Dictation() {
       for (let i = e.resultIndex; i < e.results.length; i++) {
         const res = e.results[i];
         if (res.isFinal && !insertIntoActiveField(res[0].transcript)) {
-          toast('Поставьте курсор в поле протокола, затем диктуйте');
+          toast(tr('Поставьте курсор в поле протокола, затем диктуйте'));
         }
       }
     };
     r.onend = () => setOn(false);
-    r.onerror = (e) => { setOn(false); if (e.error !== 'aborted' && e.error !== 'no-speech') toast(`Диктовка: ${e.error === 'not-allowed' ? 'нет доступа к микрофону' : e.error}`, 'danger'); };
+    r.onerror = (e) => { setOn(false); if (e.error !== 'aborted' && e.error !== 'no-speech') toast(`${tr('Диктовка')}: ${e.error === 'not-allowed' ? tr('нет доступа к микрофону') : e.error}`, 'danger'); };
     rec.current = r;
     r.start();
     setOn(true);
@@ -53,9 +54,9 @@ export function Dictation() {
       onMouseDown={(e) => e.preventDefault() /* не забирать фокус у поля */}
       onClick={toggle}
       disabled={!Ctor}
-      title={Ctor ? 'Голосовой ввод в активное поле (ru-RU)' : 'Браузер не поддерживает распознавание речи — используйте Chrome или Edge'}
+      title={Ctor ? tr('Голосовой ввод в активное поле (ru-RU)') : tr('Браузер не поддерживает распознавание речи — используйте Chrome или Edge')}
     >
-      <Icon name="mic" /> {on ? 'Слушаю…' : 'Диктовка'}
+      <Icon name="mic" /> {on ? tr('Слушаю…') : tr('Диктовка')}
     </button>
   );
 }

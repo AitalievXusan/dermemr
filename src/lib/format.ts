@@ -1,7 +1,7 @@
 import type { TimeSlot } from '../types';
 
-export const rub = (v: number) =>
-  `${new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 0 }).format(Math.round(v))} ₽`;
+/** Сумма в сумах (для серверных документов — всегда по-русски). Интерфейс использует money() из lib/i18n. */
+export const rub = (v: number) => `${new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 0 }).format(Math.round(v))} сум`;
 
 export const timeHHMM = (iso: string | number | Date) =>
   new Date(iso).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });

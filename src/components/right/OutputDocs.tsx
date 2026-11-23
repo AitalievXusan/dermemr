@@ -3,6 +3,7 @@ import { rxDrugs } from '../../lib/documents';
 import { Checkbox } from '../ui/controls';
 import { Icon } from '../ui/Icon';
 import type { DocsSelection } from '../../types';
+import { tr } from '../../lib/i18n';
 
 /** «Документы на выход» (PRD §4.4.2, DESIGN §5.4 Б). */
 export function OutputDocs() {
@@ -12,25 +13,25 @@ export function OutputDocs() {
   const set = (k: keyof DocsSelection, v: boolean) => encounter.set((s) => { s.docs[k] = v; });
 
   return (
-    <section className="panel" aria-label="Документы на выход">
-      <div className="panel__head"><h2 className="panel__title">Документы на выход</h2></div>
+    <section className="panel" aria-label={tr('Документы на выход')}>
+      <div className="panel__head"><h2 className="panel__title">{tr('Документы на выход')}</h2></div>
       <div className="docs">
-        <Checkbox checked={docs.summary} onChange={(v) => set('summary', v)}>Заключение (ПК + Mobile)</Checkbox>
+        <Checkbox checked={docs.summary} onChange={(v) => set('summary', v)}>{tr('Заключение (ПК + Mobile)')}</Checkbox>
         <div className="docs__sub">
-          <Checkbox checked={docs.attachDermatoscopy} disabled={!docs.summary} onChange={(v) => set('attachDermatoscopy', v)}>Приложить снимки дерматоскопии</Checkbox>
+          <Checkbox checked={docs.attachDermatoscopy} disabled={!docs.summary} onChange={(v) => set('attachDermatoscopy', v)}>{tr('Приложить снимки дерматоскопии')}</Checkbox>
         </div>
         <Checkbox checked={docs.prescriptions && hasRx} disabled={!hasRx} onChange={(v) => set('prescriptions', v)}>
-          Рецепты (107-1/у, прописи){!hasRx && <span className="muted"> — нет рецептурных</span>}
+          {tr('Рецепты (107-1/у, прописи)')}{!hasRx && <span className="muted"> {tr('— нет рецептурных')}</span>}
         </Checkbox>
-        <Checkbox checked={docs.memo} onChange={(v) => set('memo', v)}>Памятка пациента</Checkbox>
-        <Checkbox checked={docs.estimate} onChange={(v) => set('estimate', v)}>Смета рекомендованных услуг</Checkbox>
+        <Checkbox checked={docs.memo} onChange={(v) => set('memo', v)}>{tr('Памятка пациента')}</Checkbox>
+        <Checkbox checked={docs.estimate} onChange={(v) => set('estimate', v)}>{tr('Смета рекомендованных услуг')}</Checkbox>
       </div>
       <button type="button" className="btn btn--accent btn--block btn--tall" onClick={() => ui.set((u) => { u.docsModalOpen = true; })}>
-        <Icon name="fileText" /> Сформировать документы
+        <Icon name="fileText" /> {tr('Сформировать документы')}
       </button>
       <p className="panel__hint">
-        ИДС на электронные каналы:{' '}
-        {state.patient.communicationConsent ? <span className="ok">подписано</span> : <span className="danger">не подписано</span>}
+        {tr('ИДС на электронные каналы')}:{' '}
+        {state.patient.communicationConsent ? <span className="ok">{tr('подписано')}</span> : <span className="danger">{tr('не подписано')}</span>}
       </p>
     </section>
   );

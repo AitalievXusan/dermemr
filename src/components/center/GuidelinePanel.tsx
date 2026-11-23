@@ -7,6 +7,7 @@ import {
 } from '../../lib/guidelines';
 import { uid } from '../../lib/store';
 import { Icon } from '../ui/Icon';
+import { tr } from '../../lib/i18n';
 
 type Tab = GuidelineGroup | 'diag';
 const TABS: { key: Tab; label: string }[] = [
@@ -39,7 +40,7 @@ export function addToPlan(d: GuidelineDrug, g: Guideline) {
       });
     });
   }
-  toast(`«${d.n}» добавлен в назначения по стандарту: ${g.title}. Проверьте дозу и кратность.`, 'success');
+  toast(tr('«{name}» добавлен в назначения по стандарту: {title}. Проверьте дозу и кратность.', { name: d.n, title: g.title }), 'success');
   const { soap, encounterId, patient } = encounter.get();
   const current = [...soap.plan.topicalTherapy, ...soap.plan.systemicTherapy].filter((x) => x.id !== id).map((x) => x.drugName);
   void cdssCheck(encounterId, d.n, current, patient).then((alerts) => {
@@ -52,7 +53,7 @@ export function addProcedure(d: GuidelineDrug) {
     const line = `${d.n}${d.d ? ` — ${d.d}` : ''}`;
     s.plan.generalRecommendations = s.plan.generalRecommendations ? `${s.plan.generalRecommendations}\n${line}` : line;
   });
-  toast(`«${d.n}» добавлено в общие рекомендации`, 'success');
+  toast(tr('«{name}» добавлено в общие рекомендации', { name: d.n }), 'success');
 }
 
 function DrugRow({ d, g }: { d: GuidelineDrug; g: Guideline }) {
@@ -62,33 +63,33 @@ function DrugRow({ d, g }: { d: GuidelineDrug; g: Guideline }) {
     <li className="gl__item">
       <div className="gl__head">
         <span className="gl__name">{d.n}</span>
-        {d.s === 'a' && <span className="gl__tag" title="Раздел «Дополнительные лечебные мероприятия» стандарта">доп.</span>}
-        {d.sp && <span className="gl__tag gl__tag--spec" title="В стандарте не отмечено для первичного звена (СВП/ЦМП): назначается на уровне районных, областных или республиканских учреждений">спец. уровень</span>}
+        {d.s === 'a' && <span className="gl__tag" title={tr('Раздел «Дополнительные лечебные мероприятия» стандарта')}>{tr('доп.')}</span>}
+        {d.sp && <span className="gl__tag gl__tag--spec" title={tr('В стандарте не отмечено для первичного звена (СВП/ЦМП): назначается на уровне районных, областных или республиканских учреждений')}>{tr('спец. уровень')}</span>}
         <button
           type="button"
           className="btn btn--ghost btn--xs gl__add"
           onClick={() => (d.g === 'procedure' ? addProcedure(d) : addToPlan(d, g))}
-          title={d.g === 'procedure' ? 'Добавить в общие рекомендации' : 'Добавить в назначения (с проверкой CDSS)'}
+          title={d.g === 'procedure' ? tr('Добавить в общие рекомендации') : tr('Добавить в назначения (с проверкой CDSS)')}
         >
-          <Icon name="plus" size={13} /> {d.g === 'procedure' ? 'В рекомендации' : 'В назначения'}
+          <Icon name="plus" size={13} /> {d.g === 'procedure' ? tr('В рекомендации') : tr('В назначения')}
         </button>
       </div>
       {d.bad ? (
         <div className="gl__dose muted">
-          Текст дозировки в PDF не распознан —{' '}
-          <a href={pdfUrl(g.std.file, d.p)} target="_blank" rel="noreferrer">смотреть стандарт, стр. {d.p}</a>
+          {tr('Текст дозировки в PDF не распознан —')}{' '}
+          <a href={pdfUrl(g.std.file, d.p)} target="_blank" rel="noreferrer">{tr('смотреть стандарт, стр. {n}', { n: d.p })}</a>
         </div>
       ) : (
         d.d && (
-          <div className={`gl__dose${open || !long ? '' : ' is-clamped'}`} onClick={() => long && setOpen(!open)} title={long && !open ? 'Показать полностью' : undefined}>
+          <div className={`gl__dose${open || !long ? '' : ' is-clamped'}`} onClick={() => long && setOpen(!open)} title={long && !open ? tr('Показать полностью') : undefined}>
             {d.d}
           </div>
         )
       )}
       {(d.dd || d.cd) && (
         <div className="gl__meta mono">
-          {d.dd && <span>сут.: {d.dd}</span>}
-          {d.cd && <span>курс: {d.cd}</span>}
+          {d.dd && <span>{tr('сут.')}: {d.dd}</span>}
+          {d.cd && <span>{tr('курс')}: {d.cd}</span>}
         </div>
       )}
     </li>
@@ -113,8 +114,8 @@ function GuidelineBody({ g }: { g: Guideline }) {
   return (
     <>
       <div className="gl__links">
-        {g.kp && <a href={pdfUrl(g.kp.file, g.kp.page)} target="_blank" rel="noreferrer"><Icon name="fileText" size={13} /> Клинический протокол (лечение, стр. {g.kp.page})</a>}
-        <a href={pdfUrl(g.std.file, g.std.page)} target="_blank" rel="noreferrer"><Icon name="fileText" size={13} /> {g.kp ? 'Стандарт' : 'СОП'}</a>
+        {g.kp && <a href={pdfUrl(g.kp.file, g.kp.page)} target="_blank" rel="noreferrer"><Icon name="fileText" size={13} /> {tr('Клинический протокол (лечение, стр. {n})', { n: g.kp.page })}</a>}
+        <a href={pdfUrl(g.std.file, g.std.page)} target="_blank" rel="noreferrer"><Icon name="fileText" size={13} /> {g.kp ? tr('Стандарт') : tr('СОП')}</a>
         {g.extra.map((x) => <a key={x.file} href={pdfUrl(x.file)} target="_blank" rel="noreferrer"><Icon name="link" size={13} /> {x.title}</a>)}
       </div>
       {g.note && <p className="gl__note">{g.note}</p>}
@@ -122,13 +123,13 @@ function GuidelineBody({ g }: { g: Guideline }) {
         <div className="gl__tabs" role="tablist">
           {TABS.map((t) => counts[t.key] > 0 && (
             <button key={t.key} type="button" role="tab" aria-selected={tab === t.key} className={`chip${tab === t.key ? ' is-active' : ''}`} onClick={() => setTab(t.key)}>
-              {t.label} <span className="mono muted">{counts[t.key]}</span>
+              {tr(t.label)} <span className="mono muted">{counts[t.key]}</span>
             </button>
           ))}
         </div>
-        <input className="input input--sm gl__search" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Фильтр…" aria-label="Фильтр по протоколу" />
+        <input className="input input--sm gl__search" value={q} onChange={(e) => setQ(e.target.value)} placeholder={tr('Фильтр…')} aria-label={tr('Фильтр по протоколу')} />
         {tab !== 'diag' && hasAdditional && (
-          <label className="gl__check"><input type="checkbox" checked={mainOnly} onChange={(e) => setMainOnly(e.target.checked)} /> только основные</label>
+          <label className="gl__check"><input type="checkbox" checked={mainOnly} onChange={(e) => setMainOnly(e.target.checked)} /> {tr('только основные')}</label>
         )}
       </div>
       {tab === 'diag' ? (
@@ -138,7 +139,7 @@ function GuidelineBody({ g }: { g: Guideline }) {
               {(i === 0 || diag[i - 1].c !== d.c) && d.c && <div className="gl__cat">{d.c}</div>}
               <div className="gl__head">
                 <span>{d.n}</span>
-                {d.sp && <span className="gl__tag gl__tag--spec" title="В стандарте не отмечено для первичного звена">спец. уровень</span>}
+                {d.sp && <span className="gl__tag gl__tag--spec" title={tr('В стандарте не отмечено для первичного звена')}>{tr('спец. уровень')}</span>}
               </div>
             </li>
           ))}
@@ -146,7 +147,7 @@ function GuidelineBody({ g }: { g: Guideline }) {
       ) : (
         <ul className="gl__list">
           {drugs.map((d, i) => <DrugRow key={`${d.n}-${i}`} d={d} g={g} />)}
-          {drugs.length === 0 && <li className="gl__empty muted">Ничего не найдено</li>}
+          {drugs.length === 0 && <li className="gl__empty muted">{tr('Ничего не найдено')}</li>}
         </ul>
       )}
     </>
@@ -163,11 +164,11 @@ export function GuidelinePanel() {
   const [pick, setPick] = useState(0);
   const matches = useMemo(() => (all && code ? matchGuidelines(all, code) : []), [all, code]);
   if (!code) return null;
-  if (!all) return <div className="gl gl--loading muted">Загрузка клинических протоколов…</div>;
+  if (!all) return <div className="gl gl--loading muted">{tr('Загрузка клинических протоколов…')}</div>;
   if (!matches.length) {
     return (
       <div className="gl gl--empty muted">
-        <Icon name="fileText" size={14} /> Для диагноза <span className="mono">{code}</span> нет загруженного протокола МЗ РУз
+        <Icon name="fileText" size={14} /> {tr('Для диагноза')} <span className="mono">{code}</span> {tr('нет загруженного протокола МЗ РУз')}
       </div>
     );
   }
@@ -176,12 +177,12 @@ export function GuidelinePanel() {
   const outside = planned.filter((n) => !matches.some((m) => drugInGuideline(m, n)));
 
   return (
-    <section className="gl" aria-label="Клинический протокол МЗ РУз">
+    <section className="gl" aria-label={tr('Клинический протокол МЗ РУз')}>
       <header className="gl__bar">
         <button type="button" className="gl__toggle" onClick={() => setCollapsed(!collapsed)} aria-expanded={!collapsed}>
           <Icon name="fileText" size={15} />
-          <span className="gl__title">Протокол МЗ РУз: {g.title}</span>
-          <span className="muted gl__caret">{collapsed ? 'показать' : 'свернуть'}</span>
+          <span className="gl__title">{tr('Протокол МЗ РУз')}: {g.title}</span>
+          <span className="muted gl__caret">{collapsed ? tr('показать') : tr('свернуть')}</span>
         </button>
         {matches.length > 1 && (
           <div className="chips chips--tight">
@@ -193,14 +194,14 @@ export function GuidelinePanel() {
       </header>
       {outside.length > 0 && (
         <div className="alert-pill alert-pill--warn gl__warn">
-          <Icon name="alert" size={13} /> Нет в стандарте по нозологии: {outside.join(', ')}
+          <Icon name="alert" size={13} /> {tr('Нет в стандарте по нозологии')}: {outside.join(', ')}
         </div>
       )}
       {!collapsed && (
         <>
           <GuidelineBody key={g.id} g={g} />
           <p className="gl__foot muted">
-            Подсказки собраны автоматически из таблиц стандартов МЗ РУз. Перед назначением сверяйте дозы с первоисточником по ссылкам выше.
+            {tr('Подсказки собраны автоматически из таблиц стандартов МЗ РУз. Перед назначением сверяйте дозы с первоисточником по ссылкам выше.')}
           </p>
         </>
       )}

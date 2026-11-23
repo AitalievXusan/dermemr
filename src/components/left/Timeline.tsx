@@ -1,14 +1,15 @@
 import { useEnc } from '../../state';
 import { dateRu } from '../../lib/format';
+import { tr } from '../../lib/i18n';
 
 /** Лента прошлых визитов и анализов с подсветкой отклонений от референса (PRD §4.2.4). */
 export function Timeline() {
   const history = useEnc((s) => s.history);
   return (
-    <section className="panel" aria-label="Лента визитов и анализов">
-      <div className="panel__head"><h2 className="panel__title">Визиты и анализы</h2></div>
+    <section className="panel" aria-label={tr('Лента визитов и анализов')}>
+      <div className="panel__head"><h2 className="panel__title">{tr('Визиты и анализы')}</h2></div>
       <ol className="timeline">
-        {!history.length && <li className="muted">Нет прошлых визитов и анализов</li>}
+        {!history.length && <li className="muted">{tr('Нет прошлых визитов и анализов')}</li>}
         {history.map((h) => (
           <li key={h.date + h.title} className="timeline__item">
             <span className="timeline__date mono">{dateRu(h.date)}</span>

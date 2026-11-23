@@ -11,6 +11,7 @@ import { Icon } from '../components/ui/Icon';
 import { Card, Pill, Tag, TextField } from './ui';
 import { useProtocol } from './LabsCard';
 import { ProtocolCard } from './ProtocolCard';
+import { tr } from '../lib/i18n';
 
 /** Строка назначения: кратко, по кнопке «Изменить» — полный редактор. */
 function RxRow({ form, name, line, duration, std, editor }: { form: string; name: string; line: string; duration: string; std: boolean | null; editor: ReactNode }) {
@@ -18,17 +19,17 @@ function RxRow({ form, name, line, duration, std, editor }: { form: string; name
   return (
     <div className={`v-rx${open ? ' is-open' : ''}`}>
       <div className="v-rx__line">
-        <span className="v-rx__form">{form}</span>
+        <span className="v-rx__form">{tr(form)}</span>
         <div className="v-rx__main">
           <span className="v-rx__name">
-            <strong>{name || 'Новое назначение'}</strong>
-            {std === true && <Tag tone="ok">в стандарте</Tag>}
-            {std === false && <Tag tone="warn">вне стандарта</Tag>}
+            <strong>{name || tr('Новое назначение')}</strong>
+            {std === true && <Tag tone="ok">{tr('в стандарте')}</Tag>}
+            {std === false && <Tag tone="warn">{tr('вне стандарта')}</Tag>}
           </span>
           {line && <span className="v-muted">{line}</span>}
         </div>
         <strong className="v-rx__dur">{duration}</strong>
-        <button type="button" className="v-btn v-btn--line" onClick={() => setOpen(!open)}>{open ? 'Готово' : 'Изменить'}</button>
+        <button type="button" className="v-btn v-btn--line" onClick={() => setOpen(!open)}>{open ? tr('Готово') : tr('Изменить')}</button>
       </div>
       {open && <div className="v-rx__editor">{editor}</div>}
     </div>
@@ -52,38 +53,38 @@ function Drugs({ protocol }: { protocol: Guideline[] }) {
     updateSoap((s) => { s.plan.extemporalPrescriptions.push({ id: uid('ext'), templateKey: t.key, title: t.title, form: t.form, composition: t.composition.map((c) => ({ ...c })), sig: t.sig, applicationZone: '', timeOfDaySlot: [...t.timeOfDaySlot], durationDays: t.durationDays }); });
   };
   return (
-    <Card title="Препараты" aside={total || undefined}>
+    <Card title={tr('Препараты')} aside={total || undefined}>
       <DrugDatalists />
-      <span className="v-section">Наружная терапия</span>
-      {P.topicalTherapy.length === 0 && <p className="v-empty">Не назначена.</p>}
+      <span className="v-section">{tr('Наружная терапия')}</span>
+      {P.topicalTherapy.length === 0 && <p className="v-empty">{tr('Не назначена.')}</p>}
       {P.topicalTherapy.map((t, i) => (
-        <RxRow key={t.id} form={t.form} name={t.drugName} std={std(t.drugName)} duration={`${t.durationDays} дн.`}
+        <RxRow key={t.id} form={t.form} name={t.drugName} std={std(t.drugName)} duration={tr('{n} дн.', { n: t.durationDays })}
           line={[t.frequency, t.method && t.method.toLowerCase(), t.applicationZone].filter(Boolean).join(' · ')}
           editor={<TopicalRx i={i} />} />
       ))}
-      <span className="v-section">Системная терапия</span>
-      {P.systemicTherapy.length === 0 && <p className="v-empty">Не назначена.{protocol.length ? ' Варианты по стандарту — ниже.' : ''}</p>}
+      <span className="v-section">{tr('Системная терапия')}</span>
+      {P.systemicTherapy.length === 0 && <p className="v-empty">{tr('Не назначена.')}{protocol.length ? ` ${tr('Варианты по стандарту — ниже.')}` : ''}</p>}
       {P.systemicTherapy.map((t, i) => (
-        <RxRow key={t.id} form="Внутрь" name={t.drugName} std={std(t.drugName)} duration={`${t.durationDays} дн.`}
+        <RxRow key={t.id} form={tr('Внутрь')} name={t.drugName} std={std(t.drugName)} duration={tr('{n} дн.', { n: t.durationDays })}
           line={[t.dose, t.regimen, t.mealRelation].filter(Boolean).join(' · ')}
           editor={<SystemicRx i={i} />} />
       ))}
-      {P.extemporalPrescriptions.length > 0 && <span className="v-section">Экстемпоральные прописи</span>}
+      {P.extemporalPrescriptions.length > 0 && <span className="v-section">{tr('Экстемпоральные прописи')}</span>}
       {P.extemporalPrescriptions.map((x, i) => (
-        <RxRow key={x.id} form={x.form.replace(/^M\.f\.\s*/i, '') || 'Пропись'} name={x.title} std={null} duration={`${x.durationDays} дн.`} line={x.sig} editor={<ExtemporalRx i={i} />} />
+        <RxRow key={x.id} form={x.form.replace(/^M\.f\.\s*/i, '') || tr('Пропись')} name={x.title} std={null} duration={tr('{n} дн.', { n: x.durationDays })} line={x.sig} editor={<ExtemporalRx i={i} />} />
       ))}
       {menu ? (
         <div className="v-addmenu">
-          <button type="button" className="v-btn v-btn--line" onClick={() => add('top')}><Icon name="plus" size={16} /> Наружный препарат</button>
-          <button type="button" className="v-btn v-btn--line" onClick={() => add('sys')}><Icon name="plus" size={16} /> Системный препарат</button>
-          <select className="v-select" value="" aria-label="Пропись из шаблона" onChange={(e) => addExt(e.target.value)}>
-            <option value="">+ Пропись из шаблона…</option>
+          <button type="button" className="v-btn v-btn--line" onClick={() => add('top')}><Icon name="plus" size={16} /> {tr('Наружный препарат')}</button>
+          <button type="button" className="v-btn v-btn--line" onClick={() => add('sys')}><Icon name="plus" size={16} /> {tr('Системный препарат')}</button>
+          <select className="v-select" value="" aria-label={tr('Пропись из шаблона')} onChange={(e) => addExt(e.target.value)}>
+            <option value="">{tr('+ Пропись из шаблона…')}</option>
             {EXTEMPORAL_TEMPLATES.map((t) => <option key={t.key} value={t.key}>{t.title}</option>)}
           </select>
-          <button type="button" className="v-btn v-btn--soft" onClick={() => setMenu(false)}>Отмена</button>
+          <button type="button" className="v-btn v-btn--soft" onClick={() => setMenu(false)}>{tr('Отмена')}</button>
         </div>
       ) : (
-        <button type="button" className="v-btn v-btn--dashed" onClick={() => setMenu(true)}><Icon name="plus" size={18} /> Добавить препарат</button>
+        <button type="button" className="v-btn v-btn--dashed" onClick={() => setMenu(true)}><Icon name="plus" size={18} /> {tr('Добавить препарат')}</button>
       )}
     </Card>
   );
@@ -101,22 +102,22 @@ function Checks({ protocol }: { protocol: Guideline[] }) {
   const due = new Date(Date.now() + P.followUpDays * 86400000);
   const presets = [{ d: 14, l: '2 недели' }, { d: 28, l: '4 недели' }, { d: 90, l: '3 месяца' }];
   return (
-    <Card title="Проверка назначений" className="v-card--side">
+    <Card title={tr('Проверка назначений')} className="v-card--side">
       {alerts.length === 0 ? (
-        <div className="v-note v-note--ok"><Icon name="check" size={18} /><div><strong>Конфликтов нет</strong><span>Аллергии, беременность, взаимодействия</span></div></div>
+        <div className="v-note v-note--ok"><Icon name="check" size={18} /><div><strong>{tr('Конфликтов нет')}</strong><span>{tr('Аллергии, беременность, взаимодействия')}</span></div></div>
       ) : alerts.map((a) => (
         <div key={a.message} className={`v-note ${a.level === 'BLOCKING_ALERT' ? 'v-note--danger' : 'v-note--warn'}`}><Icon name="alert" size={18} /><div><strong>{a.title}</strong><span>{a.message}</span></div></div>
       ))}
       {outside.length > 0 && (
-        <div className="v-note v-note--warn"><Icon name="alert" size={18} /><div><strong>Вне стандарта: {outside.length}</strong><span>{outside.join(', ')} — в стандарте МЗ РУз по этой нозологии нет</span></div></div>
+        <div className="v-note v-note--warn"><Icon name="alert" size={18} /><div><strong>{tr('Вне стандарта')}: {outside.length}</strong><span>{outside.join(', ')} — {tr('в стандарте МЗ РУз по этой нозологии нет')}</span></div></div>
       )}
       <hr className="v-hr" />
-      <h2 className="v-card__title">Следующий визит</h2>
+      <h2 className="v-card__title">{tr('Следующий визит')}</h2>
       <div className="v-pills">
         {presets.map((p) => <Pill key={p.d} on={P.followUpDays === p.d} onClick={() => updateSoap((s) => { s.plan.followUpDays = p.d; })}>{p.l}</Pill>)}
-        <label className="v-days"><input className="v-input v-input--num mono" type="number" min={1} value={P.followUpDays} aria-label="Через сколько дней" onChange={(e) => updateSoap((s) => { s.plan.followUpDays = Number(e.target.value); })} /> дн.</label>
+        <label className="v-days"><input className="v-input v-input--num mono" type="number" min={1} value={P.followUpDays} aria-label={tr('Через сколько дней')} onChange={(e) => updateSoap((s) => { s.plan.followUpDays = Number(e.target.value); })} /> {tr('дн.')}</label>
       </div>
-      {P.followUpDays > 0 && <p className="v-muted">Повторный приём · {dateRu(due)}</p>}
+      {P.followUpDays > 0 && <p className="v-muted">{tr('Повторный приём')} · {dateRu(due)}</p>}
     </Card>
   );
 }
@@ -130,8 +131,8 @@ function Procedures({ protocol }: { protocol: Guideline[] }) {
     s.plan.generalRecommendations = s.plan.generalRecommendations.split('\n').filter((l) => !l.toLowerCase().includes(n.toLowerCase())).join('\n');
   });
   return (
-    <Card title="Процедуры и физиотерапия" className="v-card--side">
-      {procs.length > 0 ? <span className="v-muted">по стандарту — попадут в рекомендации</span> : <span className="v-muted">Процедур в стандарте нет — впишите в рекомендации.</span>}
+    <Card title={tr('Процедуры и физиотерапия')} className="v-card--side">
+      {procs.length > 0 ? <span className="v-muted">{tr('по стандарту — попадут в рекомендации')}</span> : <span className="v-muted">{tr('Процедур в стандарте нет — впишите в рекомендации.')}</span>}
       <div className="v-stack v-stack--tight">
         {procs.map((d) => (
           <button key={d.n} type="button" className={`v-option${has(d.n) ? ' is-on' : ''}`} onClick={() => (has(d.n) ? removeLine(d.n) : addProcedure(d))}>
@@ -141,17 +142,17 @@ function Procedures({ protocol }: { protocol: Guideline[] }) {
         ))}
       </div>
       <hr className="v-hr" />
-      <h2 className="v-card__title">Уход</h2>
+      <h2 className="v-card__title">{tr('Уход')}</h2>
       <div className="v-pills">
         {P.skincareRoutine.map((c) => (
           <Pill key={c.id} on={editCare === c.id} onClick={() => setEditCare(editCare === c.id ? null : c.id)}>{c.step}: {c.productRecommendation}</Pill>
         ))}
-        <button type="button" className="v-link" onClick={() => { const id = uid('care'); updateSoap((s) => { s.plan.skincareRoutine.push({ id, step: 'Увлажнение', productRecommendation: 'Эмолент', timeOfDaySlot: ['MORNING', 'EVENING'] }); }); setEditCare(id); }}>+ шаг ухода</button>
+        <button type="button" className="v-link" onClick={() => { const id = uid('care'); updateSoap((s) => { s.plan.skincareRoutine.push({ id, step: 'Увлажнение', productRecommendation: 'Эмолент', timeOfDaySlot: ['MORNING', 'EVENING'] }); }); setEditCare(id); }}>{tr('+ шаг ухода')}</button>
       </div>
       {editCare && P.skincareRoutine.some((c) => c.id === editCare) && (
         <div className="v-rx__editor"><CareRow i={P.skincareRoutine.findIndex((c) => c.id === editCare)} /></div>
       )}
-      <TextField label="Общие рекомендации" value={P.generalRecommendations} onChange={(v) => updateSoap((s) => { s.plan.generalRecommendations = v; })} placeholder="Режим, ограничения…  /спф_режим" rows={3} />
+      <TextField label={tr('Общие рекомендации')} value={P.generalRecommendations} onChange={(v) => updateSoap((s) => { s.plan.generalRecommendations = v; })} placeholder={tr('Режим, ограничения…  /спф_режим')} rows={3} />
     </Card>
   );
 }

@@ -1,11 +1,12 @@
 import type { EncounterState, Projection } from '../../types';
 import { formatAge } from '../../lib/calculators';
-import { dateRu, rub, timeHHMM } from '../../lib/format';
+import { dateRu, timeHHMM } from '../../lib/format';
 import { qrSvg } from '../../lib/qr';
 import { groupByTimeOfDay, memoFor, plainDiagnosis, rxDrugs, type DayStep } from '../../lib/documents';
 import { BodySilhouette } from './BodySilhouette';
 import { dermatoscopyText, LESION_LABELS, morphologySentence } from '../../lib/clinicalText';
 import type { MediaItem } from '../left/media';
+import { money } from '../../lib/i18n';
 
 // HTML-шаблоны документов (DESIGN §7, SPEC §5). В проде тот же JSX рендерится на сервере
 // (renderToStaticMarkup → Playwright page.pdf()).
@@ -315,9 +316,9 @@ export function EstimateA4({ state, verifyBase }: DocProps) {
         <thead><tr><th>Код</th><th>Услуга</th><th className="c">Кол-во</th><th>Стоимость</th></tr></thead>
         <tbody>
           {items.map((i) => (
-            <tr key={i.id}><td className="mono">{i.serviceCode}</td><td>{i.name}</td><td className="c mono">{i.quantity}</td><td className="mono">{rub(i.quantity * i.unitPrice * k)}</td></tr>
+            <tr key={i.id}><td className="mono">{i.serviceCode}</td><td>{i.name}</td><td className="c mono">{i.quantity}</td><td className="mono">{money(i.quantity * i.unitPrice * k)}</td></tr>
           ))}
-          <tr><td /><td><strong>Итого</strong></td><td /><td className="mono"><strong>{rub(total)}</strong></td></tr>
+          <tr><td /><td><strong>Итого</strong></td><td /><td className="mono"><strong>{money(total)}</strong></td></tr>
         </tbody>
       </table>
     </div>

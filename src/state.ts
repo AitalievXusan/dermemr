@@ -212,7 +212,17 @@ export function addService(price: PriceEntry, category: BillingCategory = price.
   encounter.set((s) => {
     const existing = s.soap.plan.proceduresAndLabs.find((p) => p.serviceCode === price.code && p.category === category);
     if (existing) existing.quantity += quantity;
-    else s.soap.plan.proceduresAndLabs.push({ id: uid('pr'), serviceCode: price.code, name: price.name, category, quantity, unitPrice: price.price, source });
+    else s.soap.plan.proceduresAndLabs.push({ id: uid('pr'), serviceCode: price.code, name: price.name, category, quantity, unitPrice: price.price, source, ...(price.note ? { priceNote: price.note } : {}) });
+    markCartChanged(s);
+  });
+}
+
+/** Цена услуги вручную (диапазон «от–до», цена в долларах или услуги нет в прайсе). */
+export function setServicePrice(id: string, unitPrice: number) {
+  encounter.set((s) => {
+    const it = s.soap.plan.proceduresAndLabs.find((p) => p.id === id);
+    if (!it) return;
+    it.unitPrice = Math.max(0, Math.round(unitPrice));
     markCartChanged(s);
   });
 }

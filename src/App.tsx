@@ -1,4 +1,5 @@
 import { parseHash, useHash } from './lib/router';
+import { useLang } from './lib/i18n';
 import { server } from './lib/api';
 import { Toasts } from './components/ui/Overlays';
 import { EncounterPage } from './pages/EncounterPage';
@@ -12,6 +13,7 @@ import { DayPrintPage } from './pages/DayPrintPage';
 const DAY_ROUTES = ['dayHospital', 'dayCourse', 'dayPrint'];
 
 export function App() {
+  useLang(); // смена языка перерисовывает весь интерфейс
   const route = parseHash(useHash());
   // Без сервера доступны демо-визит и дневной стационар (курсы хранятся в браузере)
   const effective = !server.online && route.name !== 'encounter' && !DAY_ROUTES.includes(route.name) ? { name: 'encounter' as const, id: 'enc_2026_11_18_0042' } : route;
