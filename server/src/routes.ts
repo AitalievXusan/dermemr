@@ -148,7 +148,7 @@ function storeMedia(buf: Buffer, declaredMime: string | undefined, e: EncounterR
 
 // ---------- маршруты ----------
 export function registerRoutes() {
-  route('GET', '/api/v1/health', (_req, res) => json(res, 200, { ok: true }));
+  route('GET', '/api/v1/health', (_req, res) => json(res, 200, { ok: true, app: 'dermemr' }));
 
   route('GET', '/api/v1/config', (_req, res) =>
     json(res, 200, {

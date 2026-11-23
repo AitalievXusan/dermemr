@@ -81,14 +81,33 @@ server.on('listening', () => {
 
 server.on('error', (e: NodeJS.ErrnoException) => {
   if (e.code === 'EADDRINUSE' && port < config.port + 20) {
-    console.log(`  Порт ${port} занят другим приложением — пробую ${port + 1}…`);
-    port += 1;
-    setTimeout(listen, 100);
+    const busy = port;
+    void isDermEmr(busy).then((ours) => {
+      if (ours) {
+        console.log(`\n  ВНИМАНИЕ: на порту ${busy} уже работает DermEMR из другого окна (возможно, старая версия).`);
+        console.log(`  Закройте то окно, иначе по адресу http://localhost:${busy} откроется прежний сервер.\n`);
+      } else {
+        console.log(`  Порт ${busy} занят другим приложением — пробую ${busy + 1}…`);
+      }
+      port = busy + 1;
+      setTimeout(listen, 100);
+    });
     return;
   }
   console.error(e.code === 'EADDRINUSE' ? `\n  Порты ${config.port}–${port} заняты. Укажите другой в .env (PORT=...).\n` : e);
   process.exit(1);
 });
+
+/** Отвечает ли на порту сервер DermEMR (в том числе прежней версии, у которой health без поля app). */
+async function isDermEmr(p: number): Promise<boolean> {
+  try {
+    const r = await fetch(`http://127.0.0.1:${p}/api/v1/health`, { signal: AbortSignal.timeout(1000) });
+    const j = (await r.json()) as { ok?: boolean };
+    return j.ok === true;
+  } catch {
+    return false;
+  }
+}
 
 const shutdown = async () => {
   flushDb();
