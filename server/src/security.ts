@@ -38,5 +38,6 @@ export function checkPresigned(path: string, exp: string | null, sig: string | n
 /** Неизменяемый журнал аудита (append-only JSONL). */
 export function audit(action: string, entityId: string | null, ip: string | undefined, userId = 'doctor_demo') {
   const line = JSON.stringify({ timestamp: new Date().toISOString(), user_id: userId, action, entity_id: entityId, ip_address: ip ?? null });
+  if (config.vercel) return console.log('[audit]', line); // журнал функций Vercel
   appendFileSync(resolve(config.dataDir, 'audit.log'), `${line}\n`);
 }

@@ -30,7 +30,14 @@ export function attachRealtime(server: Server) {
   setInterval(() => wss.clients.forEach((c) => c.readyState === c.OPEN && c.ping()), 30000).unref();
 }
 
+// В облаке WebSocket нет: события пишутся в журнал, браузер забирает их опросом (/api/v1/events)
+let emitHook: ((room: string, type: string, payload: unknown) => void) | null = null;
+export function setEmitHook(fn: typeof emitHook) {
+  emitHook = fn;
+}
+
 export function emit(room: string, type: string, payload: unknown) {
+  emitHook?.(room, type, payload);
   const msg = JSON.stringify({ type, room, payload });
   rooms.get(room)?.forEach((ws) => ws.readyState === ws.OPEN && ws.send(msg));
 }

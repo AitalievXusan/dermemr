@@ -10,10 +10,14 @@ import { templateRows, todayIso, type DayCourse, type DayCourseInput } from '../
 export interface ServerConfig {
   publicUrl: string;
   pdfEngine: 'chromium' | 'none';
+  /** ws — локальный сервер; poll — облачная версия (Vercel), события забираются опросом. */
+  realtime?: 'ws' | 'poll';
+  /** Включён вход по паролю. */
+  auth?: boolean;
   channels: Record<Channel, 'live' | 'simulation'>;
 }
 
-export const server: { online: boolean; config: ServerConfig | null } = { online: false, config: null };
+export const server: { online: boolean; config: ServerConfig | null; needLogin: boolean } = { online: false, config: null, needLogin: false };
 
 export class ApiError extends Error {
   constructor(public status: number, message: string, public data?: Record<string, unknown>) { super(message); }
@@ -28,6 +32,8 @@ async function req<T>(method: string, path: string, body?: unknown, headers: Rec
   });
   const text = await res.text();
   const data = text ? (JSON.parse(text) as Record<string, unknown>) : {};
+  // сессия истекла — перезагрузка покажет экран входа
+  if (res.status === 401 && data.auth && !server.needLogin) { server.needLogin = true; location.reload(); }
   if (!res.ok) throw new ApiError(res.status, String(data.error ?? res.statusText), data);
   return data as T;
 }
@@ -42,6 +48,11 @@ export async function initServer(): Promise<boolean> {
     const h = await fetch('/api/v1/health', { signal: ctrl.signal });
     clearTimeout(t);
     if (!h.ok) throw new Error('health');
+    const auth = await req<{ required: boolean; loggedIn: boolean }>('GET', '/api/v1/auth/status').catch(() => ({ required: false, loggedIn: true }));
+    if (auth.required && !auth.loggedIn) {
+      server.needLogin = true;
+      return false;
+    }
     server.config = await req<ServerConfig>('GET', '/api/v1/config');
     applyDictionaries(await req<Dictionaries>('GET', '/api/v1/dictionaries'));
     server.online = true;
@@ -49,6 +60,16 @@ export async function initServer(): Promise<boolean> {
     server.online = false;
   }
   return server.online;
+}
+
+/** Вход по общему паролю клиники (облачная версия). */
+export async function login(password: string): Promise<void> {
+  await req('POST', '/api/v1/auth/login', { password });
+}
+
+export async function logout(): Promise<void> {
+  await req('POST', '/api/v1/auth/logout').catch(() => undefined);
+  location.reload();
 }
 
 // ---------- Очередь и пациенты ----------

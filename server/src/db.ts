@@ -98,6 +98,8 @@ export interface DbShape {
   dictionaries: Record<string, unknown>;
   /** Дневной стационар (появилось позже — в старых db.json поля нет). */
   dayCourses?: DayCourse[];
+  /** Облачный режим: журнал событий для опроса вместо WebSocket. */
+  events?: { seq: number; room: string; type: string; payload: unknown; at: number }[];
 }
 
 const FILE = resolve(config.dataDir, 'db.json');
@@ -116,13 +118,26 @@ export function loadDb(seed: () => DbShape): DbShape {
 
 export const db = () => data;
 
+/** Облачный режим: данные загружаются из хранилища на каждый запрос. */
+export function setDb(d: DbShape) {
+  data = d;
+}
+
+// В облаке saveDb() только помечает данные изменёнными — запись делает обработчик запроса.
+let saveHook: (() => void) | null = null;
+export function setSaveHook(fn: (() => void) | null) {
+  saveHook = fn;
+}
+
 /** Отложенная атомарная запись (tmp + rename), чтобы не терять данные при сбое. */
 export function saveDb() {
+  if (saveHook) return saveHook();
   clearTimeout(timer);
   timer = setTimeout(flushDb, 200);
 }
 
 export function flushDb() {
+  if (saveHook) return;
   const tmp = `${FILE}.tmp`;
   writeFileSync(tmp, JSON.stringify(data));
   renameSync(tmp, FILE);

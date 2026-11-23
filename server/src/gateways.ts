@@ -1,9 +1,8 @@
-import { readFileSync } from 'node:fs';
-import { resolve } from 'node:path';
 import { config } from './config';
 import { db, saveDb, type DeliveryRec, type DocRec } from './db';
 import { emit } from './realtime';
 import { newId } from './security';
+import { getFile } from './storage';
 import type { Channel, Patient } from '../../src/types';
 
 // Омниканальная доставка (SPEC §6.2–6.3). Если токен канала не задан в .env —
@@ -27,8 +26,13 @@ export function setStatus(d: DeliveryRec, status: Status, extra: Partial<Deliver
   });
 }
 
-const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
-const docFile = (doc: DocRec) => readFileSync(resolve(config.dataDir, 'documents', doc.file));
+// В облаке симуляция без пауз: ответ ждёт окончания доставки
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, config.vercel ? 0 : ms));
+const docFile = async (doc: DocRec) => {
+  const buf = await getFile('documents', doc.file);
+  if (!buf) throw new Error(`Файл документа не найден: ${doc.file}`);
+  return new Uint8Array(buf);
+};
 const dateTag = () => new Date().toLocaleDateString('ru-RU').replace(/\./g, '_');
 const fileName = (doc: DocRec) =>
   `${doc.docType === 'SUMMARY_MOBILE' || doc.docType === 'SUMMARY_DESKTOP_A4' ? 'Заключение_Дерматолог' : doc.docType === 'PATIENT_MEMO' ? 'Памятка' : doc.docType === 'ESTIMATE' ? 'Смета' : 'Рецепт'}_${dateTag()}.${doc.format}`;
@@ -66,7 +70,7 @@ async function sendTelegram(d: DeliveryRec, patient: Patient, docs: DocRec[]) {
   for (const [i, doc] of list.entries()) {
     const form = new FormData();
     form.append('chat_id', String(patient.telegramChatId));
-    form.append('document', new Blob([docFile(doc)], { type: doc.format === 'pdf' ? 'application/pdf' : 'text/html' }), fileName(doc));
+    form.append('document', new Blob([await docFile(doc)], { type: doc.format === 'pdf' ? 'application/pdf' : 'text/html' }), fileName(doc));
     if (i === 0) form.append('caption', 'Ваше заключение после приема дерматолога. План лечения — по времени суток.');
     if (i === list.length - 1)
       form.append('reply_markup', JSON.stringify({ inline_keyboard: [[{ text: 'Записаться на повторный прием', url: config.bookingUrl }]] }));
@@ -111,7 +115,7 @@ async function sendWhatsApp(d: DeliveryRec, patient: Patient, docs: DocRec[]) {
   const form = new FormData();
   form.append('messaging_product', 'whatsapp');
   form.append('type', 'application/pdf');
-  form.append('file', new Blob([docFile(mobile)], { type: 'application/pdf' }), fileName(mobile));
+  form.append('file', new Blob([await docFile(mobile)], { type: 'application/pdf' }), fileName(mobile));
   const up = await fetch(`${base}/media`, { method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: form });
   const media = (await up.json()) as { id?: string; error?: { message: string } };
   if (!media.id) throw new Error(`WhatsApp media: ${media.error?.message ?? up.status}`);
@@ -165,7 +169,7 @@ async function sendMax(d: DeliveryRec, patient: Patient, docs: DocRec[]) {
   for (const doc of messengerDocs(docs)) {
     const slot = (await maxApi('/uploads?type=file', { method: 'POST' })) as { url: string };
     const form = new FormData();
-    form.append('data', new Blob([docFile(doc)], { type: 'application/pdf' }), fileName(doc));
+    form.append('data', new Blob([await docFile(doc)], { type: 'application/pdf' }), fileName(doc));
     const up = await fetch(slot.url, { method: 'POST', body: form });
     const file = (await up.json()) as { token?: string };
     if (!file.token) throw new Error('MAX: не получен токен файла');

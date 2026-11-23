@@ -802,3 +802,14 @@ input[type='range'] { accent-color: var(--accent-primary); }
 .dh-main > *, .dh-page > * { flex: none; }
 a.btn { text-decoration: none; color: inherit; }
 .dh-table td:nth-child(5) { white-space: nowrap; }
+
+/* Вход в облачную версию */
+.login { min-height: 100vh; display: grid; place-items: center; padding: 24px; background: var(--bg-canvas, var(--bg-surface-secondary)); }
+.login__card { width: 100%; max-width: 400px; display: flex; flex-direction: column; gap: 12px; padding: 28px; border-radius: 16px; background: var(--bg-surface-primary); border: 1px solid var(--border-subtle); }
+.login__top { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 8px; }
+.login__brand { font-family: var(--font-serif); font-size: 24px; font-weight: 600; }
+.login__title { font-size: 22px; font-weight: 600; margin: 0; }
+.login__hint { margin: 0; color: var(--text-muted); font-size: 15px; }
+.login__input { height: 48px; font-size: 16px; }
+.login__error { margin: 0; color: var(--status-danger-text); font-size: 14px; }
+.login__btn { width: 100%; justify-content: center; }

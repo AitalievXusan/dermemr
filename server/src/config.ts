@@ -4,8 +4,11 @@ import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { randomBytes } from 'node:crypto';
 
-// Корень проекта: server/dist/server.mjs → ../../
-export const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..');
+/** Запуск в облаке Vercel (функция), а не на компьютере клиники. */
+export const ON_VERCEL = !!process.env.VERCEL;
+
+// Корень проекта: server/dist/server.mjs → ../../ ; в функции Vercel файлы лежат рядом с index.mjs
+export const ROOT = ON_VERCEL ? dirname(fileURLToPath(import.meta.url)) : resolve(dirname(fileURLToPath(import.meta.url)), '..', '..');
 
 /** Минимальный загрузчик .env (KEY=VALUE, # комментарии) без зависимостей. */
 function loadEnv() {
@@ -32,13 +35,15 @@ export function lanIp(): string | null {
 }
 
 const PORT = Number(env('PORT', '3000'));
-const DATA_DIR = resolve(ROOT, env('DATA_DIR', 'storage'));
+// В облаке диск временный: данные хранятся в Vercel Blob, а /tmp — только рабочая папка
+const DATA_DIR = ON_VERCEL ? '/tmp/dermemr' : resolve(ROOT, env('DATA_DIR', 'storage'));
 mkdirSync(resolve(DATA_DIR, 'media'), { recursive: true });
 mkdirSync(resolve(DATA_DIR, 'documents'), { recursive: true });
 
 function secret(): string {
   const fromEnv = env('APP_SECRET');
   if (fromEnv) return fromEnv;
+  if (ON_VERCEL) throw new Error('APP_SECRET не задан в переменных окружения Vercel');
   const f = resolve(DATA_DIR, 'secret.key');
   if (!existsSync(f)) writeFileSync(f, randomBytes(32).toString('hex'));
   return readFileSync(f, 'utf8').trim();
@@ -52,6 +57,9 @@ export const config = {
   /** Адрес, по которому клинику видят смартфоны и пациенты (QR, /verify). */
   publicUrl: env('PUBLIC_URL') || `http://${lanIp() ?? 'localhost'}:${PORT}`,
   secret: secret(),
+  /** Общий пароль для входа. Пусто — вход без пароля (локальный режим по умолчанию). */
+  appPassword: env('APP_PASSWORD'),
+  vercel: ON_VERCEL,
   openBrowser: env('OPEN_BROWSER', '1') !== '0',
   pdfBrowserPath: env('PDF_BROWSER_PATH'),
   bookingUrl: env('BOOKING_URL', 'https://clinic.example/booking'),

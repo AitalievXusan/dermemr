@@ -334,7 +334,7 @@ export function startAutosave() {
     lastSig = next;
     if (s.saveState !== 'pending' && s.saveState !== 'offline') queueMicrotask(() => encounter.set((d) => { d.saveState = 'pending'; }));
     clearTimeout(timer);
-    timer = setTimeout(flushSave, 2000);
+    timer = setTimeout(flushSave, server.config?.realtime === 'poll' ? 4000 : 2000); // в облаке реже: каждая запись платная
   });
 
   const onNet = () => {

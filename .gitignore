@@ -11,3 +11,6 @@ scripts/guidelines/parsed.json
 # PDF клинических протоколов МЗ РУз хранятся локально (папка guidelines/)
 guidelines/*.pdf
 guidelines/*.pptx
+
+# Сборка для Vercel
+.vercel

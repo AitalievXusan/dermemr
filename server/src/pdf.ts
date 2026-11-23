@@ -7,6 +7,7 @@ import type { Browser } from 'puppeteer-core';
 // используется установленный Chrome или Microsoft Edge (есть в каждой Windows 10/11).
 
 function candidates(): string[] {
+  if (config.vercel) return []; // в облаке браузера нет — документы выдаются в HTML для печати
   const list = [config.pdfBrowserPath];
   const e = process.env;
   if (process.platform === 'win32') {

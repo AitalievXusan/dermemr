@@ -73,6 +73,13 @@ export function sendFile(res: ServerResponse, file: string, opts: { mime?: strin
   createReadStream(file).pipe(res);
 }
 
+export function sendBuffer(res: ServerResponse, buf: Buffer, opts: { mime: string; download?: string }) {
+  const headers: Record<string, string | number> = { 'Content-Type': opts.mime, 'Content-Length': buf.length, 'Cache-Control': 'no-store' };
+  if (opts.download) headers['Content-Disposition'] = `inline; filename*=UTF-8''${encodeURIComponent(opts.download)}`;
+  res.writeHead(200, headers);
+  res.end(buf);
+}
+
 /** Раздача собранного фронтенда (dist/) с SPA-fallback на index.html. */
 export function serveStatic(distDir: string, req: Req, res: ServerResponse): boolean {
   if (req.method !== 'GET' && req.method !== 'HEAD') return false;

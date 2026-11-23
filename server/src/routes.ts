@@ -1,8 +1,7 @@
-import { existsSync, readFileSync, writeFileSync } from 'node:fs';
-import { resolve } from 'node:path';
 import { config } from './config';
 import { db, saveDb, type CartRec, type DeliveryRec, type DocRec, type EncounterRec, type MediaRec } from './db';
-import { html, HttpError, json, readBody, readJson, route, sendFile } from './http';
+import { html, HttpError, json, readBody, readJson, route, sendBuffer } from './http';
+import { getFile, putFile } from './storage';
 import { emit } from './realtime';
 import { audit, checkPresigned, newId, presign, signToken, verifyToken } from './security';
 import { sniffMime, stripMetadata } from './exif';
@@ -126,14 +125,14 @@ function validateCompletion(e: EncounterRec): string[] {
   return errors;
 }
 
-function storeMedia(buf: Buffer, declaredMime: string | undefined, e: EncounterRec, markerId: string | null, kind: string, source: MediaRec['source']) {
+async function storeMedia(buf: Buffer, declaredMime: string | undefined, e: EncounterRec, markerId: string | null, kind: string, source: MediaRec['source']) {
   if (!buf.length) throw new HttpError(400, 'Пустой файл');
   const mime = sniffMime(buf) ?? declaredMime ?? '';
   if (!['image/jpeg', 'image/png', 'image/heic', 'image/webp'].includes(mime)) throw new HttpError(415, 'Поддерживаются JPEG, PNG, HEIC, WebP');
   const clean = stripMetadata(buf, mime);
   const id = newId('media');
   const ext = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/heic': 'heic', 'image/webp': 'webp' }[mime]!;
-  writeFileSync(resolve(config.dataDir, 'media', `${id}.${ext}`), clean);
+  await putFile('media', `${id}.${ext}`, clean, mime);
   const rec: MediaRec = {
     id, encounterId: e.id, patientId: e.patientId, markerId: markerId && e.markers.some((m) => m.id === markerId) ? markerId : null,
     mediaType: kind === 'DERMATOSCOPY' ? 'DERMATOSCOPY' : kind === 'TRICHOSCOPY' ? 'TRICHOSCOPY' : 'MACRO_PHOTO',
@@ -154,6 +153,8 @@ export function registerRoutes() {
     json(res, 200, {
       publicUrl: config.publicUrl,
       pdfEngine: browserPath() ? 'chromium' : 'none',
+      realtime: config.vercel ? 'poll' : 'ws',
+      auth: !!config.appPassword,
       channels: { PATIENT_PORTAL: 'live', TELEGRAM: channelMode('TELEGRAM'), WHATSAPP: channelMode('WHATSAPP'), MAX: channelMode('MAX') },
       clinic: CLINIC,
     }),
@@ -301,7 +302,7 @@ export function registerRoutes() {
   route('POST', '/api/v1/encounters/:id/media', async (req, res) => {
     const e = findEncounter(req.params.id);
     const buf = await readBody(req, 25 * 1024 * 1024);
-    const rec = storeMedia(buf, req.headers['content-type'], e, req.query.get('marker_id'), req.query.get('kind') ?? 'MACRO_PHOTO', 'DESKTOP');
+    const rec = await storeMedia(buf, req.headers['content-type'], e, req.query.get('marker_id'), req.query.get('kind') ?? 'MACRO_PHOTO', 'DESKTOP');
     json(res, 201, mediaDto(rec));
   });
 
@@ -315,12 +316,12 @@ export function registerRoutes() {
     json(res, 200, mediaDto(m));
   });
 
-  route('GET', '/media/:id', (req, res) => {
+  route('GET', '/media/:id', async (req, res) => {
     if (!checkPresigned(req.path, req.query.get('exp'), req.query.get('sig'))) throw new HttpError(403, 'Ссылка истекла');
     const m = db().media.find((x) => x.id === req.params.id);
-    const file = m && resolve(config.dataDir, 'media', m.file);
-    if (!m || !file || !existsSync(file)) throw new HttpError(404, 'Файл не найден');
-    sendFile(res, file, { mime: m.mime });
+    const buf = m && (await getFile('media', m.file));
+    if (!m || !buf) throw new HttpError(404, 'Файл не найден');
+    sendBuffer(res, buf, { mime: m.mime });
   });
 
   // --- QR-мост со смартфоном (SPEC §3.2) ---
@@ -346,7 +347,7 @@ export function registerRoutes() {
     if (!t) throw new HttpError(401, 'Токен недействителен или истек');
     const e = findEncounter(t.e);
     const buf = await readBody(req, 25 * 1024 * 1024);
-    const rec = storeMedia(buf, req.headers['content-type'], e, req.query.get('marker_id') || null, req.query.get('kind') ?? 'MACRO_PHOTO', 'MOBILE_QR');
+    const rec = await storeMedia(buf, req.headers['content-type'], e, req.query.get('marker_id') || null, req.query.get('kind') ?? 'MACRO_PHOTO', 'MOBILE_QR');
     json(res, 201, { media_id: rec.id });
   });
 
@@ -393,13 +394,12 @@ export function registerRoutes() {
     const e = findEncounter(req.params.id);
     const state = buildState(e);
     const hash = verificationHash(state);
-    const photos: MediaItem[] = db().media
-      .filter((m) => m.encounterId === e.id && m.includeInPdf)
-      .map((m) => {
-        const file = resolve(config.dataDir, 'media', m.file);
-        const ok = existsSync(file) && (m.mime === 'image/jpeg' || m.mime === 'image/png' || m.mime === 'image/webp');
-        return { ...mediaDto(m), url: ok ? `data:${m.mime};base64,${readFileSync(file).toString('base64')}` : '' };
-      })
+    const photos: MediaItem[] = (await Promise.all(db().media
+      .filter((m) => m.encounterId === e.id && m.includeInPdf && (m.mime === 'image/jpeg' || m.mime === 'image/png' || m.mime === 'image/webp'))
+      .map(async (m) => {
+        const buf = await getFile('media', m.file);
+        return { ...mediaDto(m), url: buf ? `data:${m.mime};base64,${buf.toString('base64')}` : '' };
+      })))
       .filter((m) => m.url);
     const engine = browserPath() ? 'pdf' : 'html';
     const generated: DocRec[] = [];
@@ -424,7 +424,7 @@ export function registerRoutes() {
     db().documents = db().documents.filter((d) => d.encounterId !== e.id);
     for (const { type, format, buf } of results) {
       const id = newId('doc');
-      writeFileSync(resolve(config.dataDir, 'documents', `${id}.${format}`), buf);
+      await putFile('documents', `${id}.${format}`, buf, format === 'pdf' ? 'application/pdf' : 'text/html; charset=utf-8');
       const rec: DocRec = { id, encounterId: e.id, patientId: e.patientId, docType: type, file: `${id}.${format}`, format, verificationHash: hash, generatedAt: new Date().toISOString(), url: '' };
       db().documents.push(rec);
       generated.push(rec);
@@ -439,13 +439,13 @@ export function registerRoutes() {
     });
   });
 
-  route('GET', '/api/v1/documents/:id/file', (req, res) => {
+  route('GET', '/api/v1/documents/:id/file', async (req, res) => {
     if (!checkPresigned(req.path, req.query.get('exp'), req.query.get('sig'))) throw new HttpError(403, 'Ссылка истекла — сформируйте документы заново');
     const d = db().documents.find((x) => x.id === req.params.id);
-    const file = d && resolve(config.dataDir, 'documents', d.file);
-    if (!d || !file || !existsSync(file)) throw new HttpError(404, 'Документ не найден');
+    const buf = d && (await getFile('documents', d.file));
+    if (!d || !buf) throw new HttpError(404, 'Документ не найден');
     audit('DOWNLOAD_PDF', d.id, req.ip);
-    sendFile(res, file, { mime: d.format === 'pdf' ? 'application/pdf' : 'text/html; charset=utf-8', download: `${DOC_TITLES[d.docType]}.${d.format}` });
+    sendBuffer(res, buf, { mime: d.format === 'pdf' ? 'application/pdf' : 'text/html; charset=utf-8', download: `${DOC_TITLES[d.docType]}.${d.format}` });
   });
 
   route('GET', '/verify/:hash', (req, res) => {
@@ -486,7 +486,9 @@ export function registerRoutes() {
     }
     if (e.status === 'IN_PROGRESS' && !validateCompletion(e).length) { e.status = 'COMPLETED'; e.completedAt = new Date().toISOString(); }
     saveDb();
-    created.forEach((d) => void runDelivery(d));
+    // В облаке фоновые задачи после ответа не гарантированы — доставку выполняем до ответа
+    if (config.vercel) await Promise.all(created.map((d) => runDelivery(d)));
+    else created.forEach((d) => void runDelivery(d));
     json(res, rejected.length && !created.length ? 403 : 202, { deliveries: created.map((d) => ({ id: d.id, channel: d.channel, status: d.status, mode: channelMode(d.channel) })), rejected });
   });
 
@@ -523,6 +525,15 @@ export function registerRoutes() {
     });
     saveDb();
     json(res, 200, { patient: { fullName: p.fullName, cardNumber: p.cardNumber }, records: out });
+  });
+
+  // Облачный режим: события вместо WebSocket (касса, снимки со смартфона, статусы доставки)
+  route('GET', '/api/v1/events', (req, res) => {
+    // since=0 — только узнать текущий номер; since<0 — все события (их ещё не было при первом запросе)
+    const since = Number(req.query.get('since') ?? 0);
+    const events = db().events ?? [];
+    const last = events.length ? events[events.length - 1].seq : 0;
+    json(res, 200, { seq: last, events: since !== 0 ? events.filter((x) => x.seq > Math.max(since, 0)) : [] });
   });
 
   route('GET', '/api/v1/patients', (_req, res) =>

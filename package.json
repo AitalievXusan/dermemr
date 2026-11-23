@@ -4,16 +4,20 @@
   "version": "1.0.0",
   "description": "DermEMR — онлайн медицинская карта приема дерматолога (рабочее место врача, касса, PDF, отправка пациенту)",
   "type": "module",
-  "engines": { "node": ">=18.17" },
+  "engines": {
+    "node": ">=18.17"
+  },
   "scripts": {
     "start": "node server/dist/server.mjs",
     "build": "vite build && node scripts/build-server.mjs",
     "dev": "node scripts/dev.mjs",
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
-    "reset-demo": "node scripts/reset-demo.mjs"
+    "reset-demo": "node scripts/reset-demo.mjs",
+    "build:vercel": "vite build && node scripts/build-vercel.mjs"
   },
   "dependencies": {
+    "@vercel/blob": "latest",
     "puppeteer-core": "^24.0.0 || ^25.0.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",

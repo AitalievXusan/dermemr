@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { createPatient, fetchQueue, newVisit, type QueueItem } from '../lib/api';
+import { createPatient, fetchQueue, logout, newVisit, server, type QueueItem } from '../lib/api';
 import { navigate, useHash } from '../lib/router';
 import { setTheme, toast, useUi } from '../state';
 import { Checkbox, Field, Segmented } from '../components/ui/controls';
@@ -35,6 +35,7 @@ export function TopBar({ title }: { title: string }) {
       <span className="topbar__title" />
       <LangSwitch />
       <Segmented<Theme> size="sm" options={[{ value: 'light', label: t('Свет') }, { value: 'dark', label: t('Тьма') }]} value={theme} onChange={setTheme} />
+      {server.config?.auth && <button type="button" className="btn btn--ghost btn--sm" onClick={() => void logout()}>{t('Выйти')}</button>}
     </header>
   );
 }

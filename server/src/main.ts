@@ -9,6 +9,7 @@ import { dispatch, json, sendFile, serveStatic, type Req } from './http';
 import { attachRealtime } from './realtime';
 import { applyStoredDictionaries, registerRoutes } from './routes';
 import { registerDayHospitalRoutes } from './dayHospital';
+import { guard, registerAuthRoutes } from './auth';
 import { startPollers, channelMode } from './gateways';
 import { browserPath, closePdfEngine, warmUpPdfEngine } from './pdf';
 
@@ -16,6 +17,7 @@ loadDb(seedDb);
 applyStoredDictionaries();
 registerRoutes();
 registerDayHospitalRoutes();
+registerAuthRoutes();
 
 const GUIDELINES_DIR = resolve(ROOT, 'guidelines');
 
@@ -36,6 +38,7 @@ const server = createServer(async (rawReq, res) => {
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PATCH, DELETE, OPTIONS');
     if (rawReq.method === 'OPTIONS') { res.writeHead(204); res.end(); return; }
   }
+  if (!guard(req, res)) return;
   if (await dispatch(req, res)) return;
   if (req.path.startsWith('/api/')) return json(res, 404, { error: 'Не найдено' });
   // PDF клинических протоколов и стандартов из папки guidelines/ (ссылки из подсказок в карте приема)
