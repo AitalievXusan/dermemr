@@ -261,6 +261,9 @@ ul, ol { list-style: none; }
   transition: fill var(--dur) var(--ease);
 }
 .bodymap__zone:hover { fill: var(--bg-surface-hover); }
+.bodymap__zone--overlay { stroke: none; }
+.bodymap__zone--overlay:hover { fill: var(--accent-primary); fill-opacity: 0.28; }
+.bodymap--large .bodymap__stage { max-height: 560px; }
 .marker {
   position: absolute;
   width: 20px; height: 20px;

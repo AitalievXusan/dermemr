@@ -58,7 +58,7 @@ export function createInitialEncounter(): EncounterState {
     activeProjection: 'FRONT',
     markers: [
       { id: 'mk_1', number: 1, projection: 'BACK', x: 205, y: 388, anatomyCode: 'BACK_L_ELBOW', anatomyLabel: 'Левый локоть (разгибательная поверхность)', lesionType: 'PLAQUE', description: 'Бляшка 4×3 см, инфильтрированная, серебристое шелушение.' },
-      { id: 'mk_2', number: 2, projection: 'FRONT', x: 415, y: 758, anatomyCode: 'FRONT_R_KNEE', anatomyLabel: 'Правое колено', lesionType: 'PLAQUE', description: 'Бляшка 5×4 см с тенденцией к периферическому росту.' },
+      { id: 'mk_2', number: 2, projection: 'FRONT', x: 395, y: 698, anatomyCode: 'FRONT_R_KNEE', anatomyLabel: 'Правое колено', lesionType: 'PLAQUE', description: 'Бляшка 5×4 см с тенденцией к периферическому росту.' },
     ],
     soap: {
       subjective: {

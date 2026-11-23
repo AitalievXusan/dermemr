@@ -1,8 +1,9 @@
-import { useRef, useState, type MouseEvent, type SVGProps } from 'react';
+import { useId, useRef, useState, type MouseEvent, type SVGProps } from 'react';
 import { addMarker, removeMarker, setProjection, updateMarker, useEnc } from '../../state';
 import { Segmented } from '../ui/controls';
 import { Icon } from '../ui/Icon';
 import { PROJECTIONS, PROJECTION_LABELS, type Shape } from './anatomy';
+import { FigureArt, FigureClips } from './FigureArt';
 import type { LesionType, Projection } from '../../types';
 import { LESION_LABELS } from '../../lib/clinicalText';
 
@@ -14,10 +15,11 @@ function ShapeEl({ s, ...rest }: { s: Shape } & SVGProps<SVGElement>) {
   return <path d={s.d} {...p} />;
 }
 
-export function BodyMap() {
+export function BodyMap({ large = false }: { large?: boolean }) {
   const projection = useEnc((s) => s.activeProjection);
   const markers = useEnc((s) => s.markers);
   const svgRef = useRef<SVGSVGElement>(null);
+  const clipId = useId().replace(/:/g, '');
   const [hover, setHover] = useState<string | null>(null);
   const def = PROJECTIONS[projection];
   const [vw, vh] = def.viewBox;
@@ -46,7 +48,7 @@ export function BodyMap() {
         value={projection}
         onChange={setProjection}
       />
-      <div className="bodymap">
+      <div className={`bodymap${large ? ' bodymap--large' : ''}`}>
         {def.caption && (
           <div className="bodymap__caption">
             <span>{def.caption[0]}</span>
@@ -55,11 +57,15 @@ export function BodyMap() {
         )}
         <div className="bodymap__stage" style={{ aspectRatio: `${vw} / ${vh}` }}>
           <svg ref={svgRef} viewBox={`0 0 ${vw} ${vh}`} className="bodymap__svg" role="img" aria-label={`Схема тела: ${PROJECTION_LABELS[projection]}`}>
+            {def.figure && <FigureClips prefix={clipId} />}
+            {def.figure && <FigureArt figure={def.figure} />}
             {def.zones.map((z) => (
               <ShapeEl
                 key={z.code}
                 s={z.shape}
-                className="bodymap__zone"
+                className={`bodymap__zone${def.figure ? ' bodymap__zone--overlay' : ''}`}
+                transform={z.transform}
+                clipPath={z.clip ? `url(#${clipId}-${z.clip})` : undefined}
                 data-zone={z.code}
                 onClick={(e: MouseEvent<SVGElement>) => onZoneClick(e, z.code, z.label)}
                 onMouseEnter={() => setHover(z.label)}

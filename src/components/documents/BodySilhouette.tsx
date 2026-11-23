@@ -1,4 +1,5 @@
 import { PROJECTIONS, type Shape } from '../left/anatomy';
+import { FigureArt, PRINT_PALETTE } from '../left/FigureArt';
 import type { Projection } from '../../types';
 
 function ShapeEl({ s }: { s: Shape }) {
@@ -14,9 +15,7 @@ export function BodySilhouette({ projection, markers, className }: { projection:
   const [vw, vh] = def.viewBox;
   return (
     <svg className={className} viewBox={`0 0 ${vw} ${vh}`}>
-      {def.zones.map((z) => (
-        <ShapeEl key={z.code} s={z.shape} />
-      ))}
+      {def.figure ? <FigureArt figure={def.figure} palette={PRINT_PALETTE} /> : def.zones.map((z) => <ShapeEl key={z.code} s={z.shape} />)}
       {markers.map((m) => (
         <g key={m.number}>
           <circle cx={(m.x / 1000) * vw} cy={(m.y / 1000) * vh} r={11} fill="#1B3B2E" />
