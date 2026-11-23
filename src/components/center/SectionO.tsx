@@ -9,17 +9,17 @@ export const PRIMARY = ['пятно', 'папула', 'бляшка', 'буго�
 export const SECONDARY = ['чешуйка', 'корка', 'эрозия', 'язва', 'трещина', 'экскориация', 'лихенификация', 'рубец', 'гиперпигментация', 'гипопигментация'] as const;
 const VESSELS = ['точечные', 'клубочковые', 'древовидные', 'шпилькообразные', 'линейные извитые'];
 
-const COURSE: { value: Course; label: string }[] = [
+export const COURSE: { value: Course; label: string }[] = [
   { value: 'ACUTE', label: 'Острое' }, { value: 'SUBACUTE', label: 'Подострое' }, { value: 'CHRONIC', label: 'Хроническое' },
 ];
-const DISTR: { value: Distribution; label: string }[] = [
+export const DISTR: { value: Distribution; label: string }[] = [
   { value: 'LIMITED', label: 'Ограниченный' }, { value: 'DISSEMINATED', label: 'Распространенный' }, { value: 'UNIVERSAL', label: 'Универсальный' },
 ];
-const SYM: { value: Symmetry; label: string }[] = [
+export const SYM: { value: Symmetry; label: string }[] = [
   { value: 'SYMMETRIC', label: 'Симметричный' }, { value: 'ASYMMETRIC', label: 'Асимметричный' },
 ];
 
-function DermatoscopyBlock() {
+export function DermatoscopyBlock() {
   const markers = useEnc((s) => s.markers);
   const derm = useEnc((s) => s.soap.objective.dermatoscopy);
   const notes = useEnc((s) => s.soap.objective.dermatoscopyNotes);

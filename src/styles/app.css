@@ -675,59 +675,20 @@ input[type='range'] { accent-color: var(--accent-primary); }
 .gl__empty { padding: 10px 2px; font-size: 12px; }
 .gl__foot { margin: 0; font-size: 11.5px; }
 
-/* ---------- Приём по страницам (Жалобы → Осмотр → Диагноз → Лечение → Итог) ---------- */
+/* ---------- Переключатель вида карты (режим «Одним листом») ---------- */
 .app { height: 100vh; }
 .app > .workspace { height: auto; flex: 1 1 auto; min-height: 0; }
 .btn--primary { background: var(--accent-authority); color: var(--bg-surface-primary); }
 .btn--primary:hover { opacity: 0.92; }
-.visitbar { flex: none; display: flex; align-items: flex-end; gap: 16px; padding: 12px 24px 0; background: var(--bg-surface-primary); border-bottom: 1px solid var(--border-subtle); }
-.visitbar__title { flex: 1; padding-bottom: 12px; font-size: 14px; color: var(--text-secondary); }
-.visitbar__toggle { margin-bottom: 12px; flex: none; }
-.steps { flex: 1; display: flex; gap: 14px; min-width: 0; }
-.steps__item { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; gap: 10px; padding: 2px 0 0; border: 0; background: none; cursor: pointer; text-align: left; color: var(--text-muted); font: inherit; }
-.steps__head { display: flex; align-items: center; gap: 10px; min-width: 0; }
-.steps__dot { flex: none; width: 30px; height: 30px; border-radius: 50%; display: inline-grid; place-items: center; border: 1.5px solid var(--border-subtle); font-size: 14px; font-weight: 600; box-sizing: border-box; }
-.steps__title { font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.steps__bar { height: 3px; border-radius: 2px; background: var(--border-subtle); }
-.steps__item:hover .steps__title { color: var(--text-primary); }
-.steps__item.is-done { color: var(--text-secondary); }
-.steps__item.is-done .steps__dot { border: 0; background: var(--status-success-bg); color: var(--status-success-text); }
-.steps__item.is-done .steps__bar { background: var(--status-success-text); }
-.steps__item.is-active { color: var(--text-primary); }
-.steps__item.is-active .steps__title { font-weight: 600; }
-.steps__item.is-active .steps__dot { border: 0; background: var(--accent-authority); color: var(--bg-surface-primary); }
-.steps__item.is-active .steps__bar { background: var(--accent-primary); }
-
-.stepview { flex: 1 1 auto; min-height: 0; overflow-y: auto; background: var(--bg-canvas); }
-.stepgrid { max-width: 1440px; margin: 0 auto; padding: 20px 24px 32px; display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 20px; align-items: start; }
-.stepgrid--exam { grid-template-columns: 400px minmax(0, 1fr); }
-.stepgrid--exam.is-lightbox { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
-.stepgrid__main, .stepgrid__aside { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
-.stepgrid__main > .sheet__bar { position: static; border: 1px solid var(--border-subtle); border-radius: 12px; padding: 10px 14px; }
-.sheet__paper--step { max-width: none; margin: 0; padding: 4px 28px 20px; background: var(--bg-surface-primary); border: 1px solid var(--border-subtle); border-radius: 12px; }
-.sheet__paper--step > .gl { margin-left: 0; }
-
+.visitbar { flex: none; display: flex; align-items: center; gap: 16px; padding: 8px 24px; background: var(--bg-surface-primary); border-bottom: 1px solid var(--border-subtle); }
+.visitbar__title { flex: 1; font-size: 14px; color: var(--text-secondary); }
+.visitbar__toggle { flex: none; }
 .card { background: var(--bg-surface-primary); border: 1px solid var(--border-subtle); border-radius: 12px; padding: 20px 24px; display: flex; flex-direction: column; gap: 14px; }
 .card--accent { border-left: 3px solid var(--accent-primary); }
 .card__title { margin: 0; font-size: 18px; font-weight: 600; }
 .card__row { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
 .card__row p { margin: 4px 0 0; }
-.summary { display: grid; grid-template-columns: 170px minmax(0, 1fr); gap: 12px 20px; margin: 0; font-size: 15px; }
-.summary dt { color: var(--text-secondary); font-size: 13px; padding-top: 2px; }
-.summary dd { margin: 0; line-height: 1.5; }
-.summary__list { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 4px; }
-.summary__total { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; padding-top: 12px; border-top: 1px solid var(--border-subtle); font-size: 15px; }
-.summary__total strong { font-size: 20px; }
-
-.stepnav { flex: none; display: flex; align-items: center; gap: 12px; padding: 12px 24px; background: var(--bg-surface-primary); border-top: 1px solid var(--border-subtle); }
-.stepnav__saved { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; }
 .stepnav__spacer { flex: 1; }
-.stepnav .btn--tall { height: 44px; padding: 0 20px; font-size: 15px; }
-
-@media (max-width: 1200px) {
-  .stepgrid, .stepgrid--exam { grid-template-columns: minmax(0, 1fr); }
-  .steps__title { font-size: 13px; }
-}
 
 /* ---------- Дневной стационар ---------- */
 .dh-page { display: flex; flex-direction: column; gap: 16px; max-width: 1240px; width: 100%; margin: 0 auto; }

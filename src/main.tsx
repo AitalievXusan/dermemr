@@ -5,6 +5,7 @@ import { initRealtime, ui } from './state';
 import { initServer } from './lib/api';
 import './styles/tokens.css';
 import './styles/app.css';
+import './styles/visit.css';
 
 document.documentElement.dataset.theme = ui.get().theme;
 

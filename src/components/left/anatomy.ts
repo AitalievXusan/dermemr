@@ -81,7 +81,7 @@ const face: ProjectionDef = {
 };
 
 function handsFeetDef(): ProjectionDef {
-  const zones: Zone[] = HANDS_FEET.filter((e) => e.z).map((e) => {
+  const zones: Zone[] = HANDS_FEET.filter((e) => e.z && e.tag !== 'text').map((e) => {
     const a = e.a as Record<string, number> & { d: string };
     const shape: Shape =
       e.tag === 'rect' ? { t: 'rect', x: a.x, y: a.y, w: a.width, h: a.height, r: a.rx }
@@ -89,7 +89,7 @@ function handsFeetDef(): ProjectionDef {
       : { t: 'path', d: a.d };
     return { code: e.z!.code, label: e.z!.label, shape, transform: e.tf };
   });
-  return { viewBox: [360, 530], zones, caption: ['Лев', 'Пр'], figure: 'HANDS_FEET' };
+  return { viewBox: [760, 570], zones, figure: 'HANDS_FEET' };
 }
 
 export const PROJECTIONS: Record<Projection, ProjectionDef> = {

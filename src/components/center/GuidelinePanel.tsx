@@ -17,7 +17,7 @@ const TABS: { key: Tab; label: string }[] = [
 ];
 
 /** Добавить препарат из стандарта в план и сразу прогнать CDSS (аллергии, беременность, взаимодействия). */
-function addToPlan(d: GuidelineDrug, g: Guideline) {
+export function addToPlan(d: GuidelineDrug, g: Guideline) {
   const text = d.d;
   const days = parseDurationDays(text) ?? parseDurationDays(d.cd);
   const list = d.g === 'topical' ? 'topicalTherapy' : 'systemicTherapy';
@@ -47,7 +47,7 @@ function addToPlan(d: GuidelineDrug, g: Guideline) {
   });
 }
 
-function addProcedure(d: GuidelineDrug) {
+export function addProcedure(d: GuidelineDrug) {
   updateSoap((s) => {
     const line = `${d.n}${d.d ? ` — ${d.d}` : ''}`;
     s.plan.generalRecommendations = s.plan.generalRecommendations ? `${s.plan.generalRecommendations}\n${line}` : line;

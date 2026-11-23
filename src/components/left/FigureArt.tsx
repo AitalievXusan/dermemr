@@ -28,12 +28,21 @@ const detailStyle = (k: FigKind, p: FigurePalette) => {
 };
 
 function ExtShape({ e, p }: { e: ExtEl; p: FigurePalette }) {
+  if (e.tag === 'text') {
+    const t = e.a as { x: number; y: number; t: string; anchor: 'start' | 'middle' | 'end' };
+    return (
+      <text x={t.x} y={t.y} textAnchor={t.anchor} style={e.k === 'cap' ? { fill: p.ink, fontSize: 13, fontWeight: 600, letterSpacing: '0.08em' } : { fill: p.det, fontSize: 12 }} fontFamily="Geist, Inter, Arial, sans-serif">
+        {t.t}
+      </text>
+    );
+  }
   const style =
     e.k === 'skin' ? { fill: p.skin, stroke: p.ink, strokeWidth: 1.6 }
     : e.k === 'nail' ? { fill: p.nail, stroke: p.det, strokeWidth: 1.1 }
     : e.k === 'dot' ? { fill: p.det }
     : e.k === 'line' ? { fill: 'none', stroke: p.ink, strokeWidth: 1.6 }
-    : { fill: 'none', stroke: p.det, strokeWidth: 1, opacity: 0.6, strokeLinecap: 'round' as const };
+    : e.k === 'dash' ? { fill: 'none', stroke: p.det, strokeWidth: 1.2, strokeDasharray: '3 4' }
+    : { fill: 'none', stroke: p.det, strokeWidth: 1.2, opacity: 0.7, strokeLinecap: 'round' as const };
   const a = e.a as Record<string, number> & { d: string };
   const common = { style, transform: e.tf };
   if (e.tag === 'rect') return <rect x={a.x} y={a.y} width={a.width} height={a.height} rx={a.rx} {...common} />;
@@ -57,7 +66,7 @@ export function FigureClips({ prefix }: { prefix: string }) {
 export function FigureArt({ figure, palette = SCREEN_PALETTE }: { figure: 'FRONT' | 'BACK' | 'HANDS_FEET'; palette?: FigurePalette }) {
   const p = palette;
   if (figure === 'HANDS_FEET') {
-    return <g aria-hidden="true">{HANDS_FEET.map((e, i) => <ExtShape key={i} e={e} p={p} />)}</g>;
+    return <g aria-hidden="true" style={{ pointerEvents: 'none' }}>{HANDS_FEET.map((e, i) => <ExtShape key={i} e={e} p={p} />)}</g>;
   }
   const skin = { fill: p.skin, stroke: p.ink, strokeWidth: 1.6, strokeLinejoin: 'round' as const };
   const details = figure === 'FRONT' ? FIG_FRONT : FIG_BACK;

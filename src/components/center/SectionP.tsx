@@ -66,7 +66,7 @@ function DrugInput({ list, id, value, route }: { list: 'topicalTherapy' | 'syste
 }
 
 /** Автокомплит: локальный справочник + препараты из стандарта МЗ РУз для текущего диагноза. */
-function DrugDatalists() {
+export function DrugDatalists() {
   const code = useEnc((s) => s.soap.assessment.primaryDiagnosis.icd10Code);
   const all = useGuidelines();
   const protocol = useMemo(() => {
@@ -129,7 +129,7 @@ function IsotretinoinCalc({ dailyDoseMg, days }: { dailyDoseMg: number; days: nu
   );
 }
 
-function ServiceSearch() {
+export function ServiceSearch() {
   const [q, setQ] = useState('');
   const results = searchPrice(q);
   return (
@@ -145,6 +145,107 @@ function ServiceSearch() {
           ))}
         </div>
       )}
+    </div>
+  );
+}
+
+/** Строка наружного назначения (редактор). */
+export function TopicalRx({ i }: { i: number }) {
+  const t = useEnc((s) => s.soap.plan.topicalTherapy[i]);
+  if (!t) return null;
+  return (
+    <div className="rx">
+      <div className="rx__line">
+        <select className="select" value={t.form} aria-label="Форма" onChange={(e) => updateSoap((s) => { s.plan.topicalTherapy[i].form = e.target.value; })}>
+          {FORMS.map((f) => <option key={f}>{f}</option>)}
+        </select>
+        <DrugInput list="topicalTherapy" id={t.id} value={t.drugName} route="topical" />
+        <button type="button" className="icon-btn" aria-label="Удалить назначение" onClick={() => updateSoap((s) => { s.plan.topicalTherapy.splice(i, 1); })}><Icon name="trash" size={14} /></button>
+      </div>
+      <div className="rx__line">
+        <input className="input" value={t.applicationZone} placeholder="Зона нанесения" aria-label="Зона нанесения" onChange={(e) => updateSoap((s) => { s.plan.topicalTherapy[i].applicationZone = e.target.value; })} />
+        <input className="input" value={t.frequency} placeholder="Кратность" aria-label="Кратность" onChange={(e) => updateSoap((s) => { s.plan.topicalTherapy[i].frequency = e.target.value; })} />
+      </div>
+      <div className="rx__line">
+        <SlotPicker value={t.timeOfDaySlot} onChange={(v) => updateSoap((s) => { s.plan.topicalTherapy[i].timeOfDaySlot = v; })} />
+        <input className="input" value={t.method} placeholder="Способ" aria-label="Способ" onChange={(e) => updateSoap((s) => { s.plan.topicalTherapy[i].method = e.target.value; })} />
+        <label className="rx__days"><input className="input input--xs mono" type="number" min={1} value={t.durationDays} aria-label="Длительность курса, дней" onChange={(e) => updateSoap((s) => { s.plan.topicalTherapy[i].durationDays = Number(e.target.value); })} /> дн.</label>
+      </div>
+      <SmartText value={t.taperingScheme} placeholder="Схема отмены…  /тгкс_отмена" ariaLabel="Схема отмены" onChange={(v) => updateSoap((s) => { s.plan.topicalTherapy[i].taperingScheme = v; })} />
+    </div>
+  );
+}
+
+/** Строка системного назначения (редактор, калькулятор изотретиноина). */
+export function SystemicRx({ i }: { i: number }) {
+  const t = useEnc((s) => s.soap.plan.systemicTherapy[i]);
+  if (!t) return null;
+  const isIso = findDrug(t.drugName)?.inn === 'isotretinoin';
+  return (
+    <div className="rx">
+      <div className="rx__line">
+        <DrugInput list="systemicTherapy" id={t.id} value={t.drugName} route="systemic" />
+        <input className="input input--sm mono" value={t.dose} placeholder="Доза" aria-label="Доза" onChange={(e) => updateSoap((s) => { s.plan.systemicTherapy[i].dose = e.target.value; })} />
+        <button type="button" className="icon-btn" aria-label="Удалить назначение" onClick={() => updateSoap((s) => { s.plan.systemicTherapy.splice(i, 1); })}><Icon name="trash" size={14} /></button>
+      </div>
+      <div className="rx__line">
+        <input className="input" value={t.regimen} placeholder="Режим приема" aria-label="Режим" onChange={(e) => updateSoap((s) => { s.plan.systemicTherapy[i].regimen = e.target.value; })} />
+        <input className="input" value={t.mealRelation} placeholder="Связь с едой" aria-label="Связь с едой" onChange={(e) => updateSoap((s) => { s.plan.systemicTherapy[i].mealRelation = e.target.value; })} />
+      </div>
+      <div className="rx__line">
+        <SlotPicker value={t.timeOfDaySlot} onChange={(v) => updateSoap((s) => { s.plan.systemicTherapy[i].timeOfDaySlot = v; })} />
+        {isIso && (
+          <label className="rx__days"><input className="input input--xs mono" type="number" min={0} value={t.dailyDoseMg ?? 0} aria-label="Суточная доза, мг" onChange={(e) => updateSoap((s) => { s.plan.systemicTherapy[i].dailyDoseMg = Number(e.target.value); })} /> мг/сут</label>
+        )}
+        <label className="rx__days"><input className="input input--xs mono" type="number" min={1} value={t.durationDays} aria-label="Длительность, дней" onChange={(e) => updateSoap((s) => { s.plan.systemicTherapy[i].durationDays = Number(e.target.value); })} /> дн.</label>
+      </div>
+      {isIso && <IsotretinoinCalc dailyDoseMg={t.dailyDoseMg ?? 0} days={t.durationDays} />}
+    </div>
+  );
+}
+
+/** Экстемпоральная пропись (редактор). */
+export function ExtemporalRx({ i }: { i: number }) {
+  const x = useEnc((s) => s.soap.plan.extemporalPrescriptions[i]);
+  if (!x) return null;
+  return (
+    <div className="rx">
+      <div className="rx__line">
+        <strong className="rx__title">{x.title}</strong>
+        <button type="button" className="icon-btn" aria-label="Удалить пропись" onClick={() => updateSoap((s) => { s.plan.extemporalPrescriptions.splice(i, 1); })}><Icon name="trash" size={14} /></button>
+      </div>
+      <div className="rx__comp mono">
+        <span>Rp.:</span>
+        {x.composition.map((c, j) => (
+          <span key={j} className="rx__ing">
+            {c.ingredient}
+            <input className="input input--xs mono" value={c.amount} aria-label={`Количество ${c.ingredient}`} onChange={(e) => updateSoap((s) => { s.plan.extemporalPrescriptions[i].composition[j].amount = e.target.value; })} />
+          </span>
+        ))}
+        <span>{x.form}</span>
+      </div>
+      <div className="rx__line">
+        <input className="input" value={x.applicationZone} placeholder="Зона нанесения" aria-label="Зона нанесения" onChange={(e) => updateSoap((s) => { s.plan.extemporalPrescriptions[i].applicationZone = e.target.value; })} />
+        <SlotPicker value={x.timeOfDaySlot} onChange={(v) => updateSoap((s) => { s.plan.extemporalPrescriptions[i].timeOfDaySlot = v; })} />
+        <label className="rx__days"><input className="input input--xs mono" type="number" min={1} value={x.durationDays} aria-label="Длительность, дней" onChange={(e) => updateSoap((s) => { s.plan.extemporalPrescriptions[i].durationDays = Number(e.target.value); })} /> дн.</label>
+      </div>
+      <SmartText value={x.sig} placeholder="D.S. — способ применения" ariaLabel="Сигнатура" onChange={(v) => updateSoap((s) => { s.plan.extemporalPrescriptions[i].sig = v; })} />
+    </div>
+  );
+}
+
+/** Шаг базового ухода (редактор). */
+export function CareRow({ i }: { i: number }) {
+  const c = useEnc((s) => s.soap.plan.skincareRoutine[i]);
+  if (!c) return null;
+  return (
+    <div className="rx__line rx__line--care">
+      <select className="select" value={c.step} aria-label="Шаг ухода" onChange={(e) => updateSoap((s) => { s.plan.skincareRoutine[i].step = e.target.value; })}>
+        {['Очищение', 'Увлажнение', 'Фотозащита'].map((x) => <option key={x}>{x}</option>)}
+      </select>
+      <input className="input" value={c.productRecommendation} aria-label="Средство" onChange={(e) => updateSoap((s) => { s.plan.skincareRoutine[i].productRecommendation = e.target.value; })} />
+      <SlotPicker value={c.timeOfDaySlot} onChange={(v) => updateSoap((s) => { s.plan.skincareRoutine[i].timeOfDaySlot = v; })} />
+      <button type="button" className="icon-btn" aria-label="Удалить шаг" onClick={() => updateSoap((s) => { s.plan.skincareRoutine.splice(i, 1); })}><Icon name="trash" size={14} /></button>
     </div>
   );
 }
@@ -165,27 +266,7 @@ export function SectionP() {
               <Icon name="plus" size={14} /> Назначение
             </button>
           </span>
-          {P.topicalTherapy.map((t, i) => (
-            <div key={t.id} className="rx">
-              <div className="rx__line">
-                <select className="select" value={t.form} aria-label="Форма" onChange={(e) => updateSoap((s) => { s.plan.topicalTherapy[i].form = e.target.value; })}>
-                  {FORMS.map((f) => <option key={f}>{f}</option>)}
-                </select>
-                <DrugInput list="topicalTherapy" id={t.id} value={t.drugName} route="topical" />
-                <button type="button" className="icon-btn" aria-label="Удалить назначение" onClick={() => updateSoap((s) => { s.plan.topicalTherapy.splice(i, 1); })}><Icon name="trash" size={14} /></button>
-              </div>
-              <div className="rx__line">
-                <input className="input" value={t.applicationZone} placeholder="Зона нанесения" aria-label="Зона нанесения" onChange={(e) => updateSoap((s) => { s.plan.topicalTherapy[i].applicationZone = e.target.value; })} />
-                <input className="input" value={t.frequency} placeholder="Кратность" aria-label="Кратность" onChange={(e) => updateSoap((s) => { s.plan.topicalTherapy[i].frequency = e.target.value; })} />
-              </div>
-              <div className="rx__line">
-                <SlotPicker value={t.timeOfDaySlot} onChange={(v) => updateSoap((s) => { s.plan.topicalTherapy[i].timeOfDaySlot = v; })} />
-                <input className="input" value={t.method} placeholder="Способ" aria-label="Способ" onChange={(e) => updateSoap((s) => { s.plan.topicalTherapy[i].method = e.target.value; })} />
-                <label className="rx__days"><input className="input input--xs mono" type="number" min={1} value={t.durationDays} aria-label="Длительность курса, дней" onChange={(e) => updateSoap((s) => { s.plan.topicalTherapy[i].durationDays = Number(e.target.value); })} /> дн.</label>
-              </div>
-              <SmartText value={t.taperingScheme} placeholder="Схема отмены…  /тгкс_отмена" ariaLabel="Схема отмены" onChange={(v) => updateSoap((s) => { s.plan.topicalTherapy[i].taperingScheme = v; })} />
-            </div>
-          ))}
+          {P.topicalTherapy.map((t, i) => <TopicalRx key={t.id} i={i} />)}
         </div>
 
         <div className="soap__field">
@@ -195,30 +276,7 @@ export function SectionP() {
               <Icon name="plus" size={14} /> Назначение
             </button>
           </span>
-          {P.systemicTherapy.map((t, i) => {
-            const isIso = findDrug(t.drugName)?.inn === 'isotretinoin';
-            return (
-              <div key={t.id} className="rx">
-                <div className="rx__line">
-                  <DrugInput list="systemicTherapy" id={t.id} value={t.drugName} route="systemic" />
-                  <input className="input input--sm mono" value={t.dose} placeholder="Доза" aria-label="Доза" onChange={(e) => updateSoap((s) => { s.plan.systemicTherapy[i].dose = e.target.value; })} />
-                  <button type="button" className="icon-btn" aria-label="Удалить назначение" onClick={() => updateSoap((s) => { s.plan.systemicTherapy.splice(i, 1); })}><Icon name="trash" size={14} /></button>
-                </div>
-                <div className="rx__line">
-                  <input className="input" value={t.regimen} placeholder="Режим приема" aria-label="Режим" onChange={(e) => updateSoap((s) => { s.plan.systemicTherapy[i].regimen = e.target.value; })} />
-                  <input className="input" value={t.mealRelation} placeholder="Связь с едой" aria-label="Связь с едой" onChange={(e) => updateSoap((s) => { s.plan.systemicTherapy[i].mealRelation = e.target.value; })} />
-                </div>
-                <div className="rx__line">
-                  <SlotPicker value={t.timeOfDaySlot} onChange={(v) => updateSoap((s) => { s.plan.systemicTherapy[i].timeOfDaySlot = v; })} />
-                  {isIso && (
-                    <label className="rx__days"><input className="input input--xs mono" type="number" min={0} value={t.dailyDoseMg ?? 0} aria-label="Суточная доза, мг" onChange={(e) => updateSoap((s) => { s.plan.systemicTherapy[i].dailyDoseMg = Number(e.target.value); })} /> мг/сут</label>
-                  )}
-                  <label className="rx__days"><input className="input input--xs mono" type="number" min={1} value={t.durationDays} aria-label="Длительность, дней" onChange={(e) => updateSoap((s) => { s.plan.systemicTherapy[i].durationDays = Number(e.target.value); })} /> дн.</label>
-                </div>
-                {isIso && <IsotretinoinCalc dailyDoseMg={t.dailyDoseMg ?? 0} days={t.durationDays} />}
-              </div>
-            );
-          })}
+          {P.systemicTherapy.map((t, i) => <SystemicRx key={t.id} i={i} />)}
         </div>
 
         <div className="soap__field">
@@ -237,30 +295,7 @@ export function SectionP() {
               {EXTEMPORAL_TEMPLATES.map((t) => <option key={t.key} value={t.key}>{t.title}</option>)}
             </select>
           </span>
-          {P.extemporalPrescriptions.map((x, i) => (
-            <div key={x.id} className="rx">
-              <div className="rx__line">
-                <strong className="rx__title">{x.title}</strong>
-                <button type="button" className="icon-btn" aria-label="Удалить пропись" onClick={() => updateSoap((s) => { s.plan.extemporalPrescriptions.splice(i, 1); })}><Icon name="trash" size={14} /></button>
-              </div>
-              <div className="rx__comp mono">
-                <span>Rp.:</span>
-                {x.composition.map((c, j) => (
-                  <span key={j} className="rx__ing">
-                    {c.ingredient}
-                    <input className="input input--xs mono" value={c.amount} aria-label={`Количество ${c.ingredient}`} onChange={(e) => updateSoap((s) => { s.plan.extemporalPrescriptions[i].composition[j].amount = e.target.value; })} />
-                  </span>
-                ))}
-                <span>{x.form}</span>
-              </div>
-              <div className="rx__line">
-                <input className="input" value={x.applicationZone} placeholder="Зона нанесения" aria-label="Зона нанесения" onChange={(e) => updateSoap((s) => { s.plan.extemporalPrescriptions[i].applicationZone = e.target.value; })} />
-                <SlotPicker value={x.timeOfDaySlot} onChange={(v) => updateSoap((s) => { s.plan.extemporalPrescriptions[i].timeOfDaySlot = v; })} />
-                <label className="rx__days"><input className="input input--xs mono" type="number" min={1} value={x.durationDays} aria-label="Длительность, дней" onChange={(e) => updateSoap((s) => { s.plan.extemporalPrescriptions[i].durationDays = Number(e.target.value); })} /> дн.</label>
-              </div>
-              <SmartText value={x.sig} placeholder="D.S. — способ применения" ariaLabel="Сигнатура" onChange={(v) => updateSoap((s) => { s.plan.extemporalPrescriptions[i].sig = v; })} />
-            </div>
-          ))}
+          {P.extemporalPrescriptions.map((x, i) => <ExtemporalRx key={x.id} i={i} />)}
         </div>
 
         <div className="soap__field">
@@ -270,16 +305,7 @@ export function SectionP() {
               <Icon name="plus" size={14} /> Шаг ухода
             </button>
           </span>
-          {P.skincareRoutine.map((c, i) => (
-            <div key={c.id} className="rx__line rx__line--care">
-              <select className="select" value={c.step} aria-label="Шаг ухода" onChange={(e) => updateSoap((s) => { s.plan.skincareRoutine[i].step = e.target.value; })}>
-                {['Очищение', 'Увлажнение', 'Фотозащита'].map((x) => <option key={x}>{x}</option>)}
-              </select>
-              <input className="input" value={c.productRecommendation} aria-label="Средство" onChange={(e) => updateSoap((s) => { s.plan.skincareRoutine[i].productRecommendation = e.target.value; })} />
-              <SlotPicker value={c.timeOfDaySlot} onChange={(v) => updateSoap((s) => { s.plan.skincareRoutine[i].timeOfDaySlot = v; })} />
-              <button type="button" className="icon-btn" aria-label="Удалить шаг" onClick={() => updateSoap((s) => { s.plan.skincareRoutine.splice(i, 1); })}><Icon name="trash" size={14} /></button>
-            </div>
-          ))}
+          {P.skincareRoutine.map((c, i) => <CareRow key={c.id} i={i} />)}
         </div>
 
         <div className="soap__field">

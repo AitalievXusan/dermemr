@@ -15,12 +15,11 @@ function ShapeEl({ s, ...rest }: { s: Shape } & SVGProps<SVGElement>) {
   return <path d={s.d} {...p} />;
 }
 
-export function BodyMap({ large = false }: { large?: boolean }) {
-  const projection = useEnc((s) => s.activeProjection);
+/** Одна проекция схемы: силуэт, кликабельные зоны и номера очагов. */
+export function ProjectionCanvas({ projection, onHover, className = '' }: { projection: Projection; onHover?: (label: string | null) => void; className?: string }) {
   const markers = useEnc((s) => s.markers);
   const svgRef = useRef<SVGSVGElement>(null);
   const clipId = useId().replace(/:/g, '');
-  const [hover, setHover] = useState<string | null>(null);
   const def = PROJECTIONS[projection];
   const [vw, vh] = def.viewBox;
   const visible = markers.filter((m) => m.projection === projection);
@@ -34,6 +33,42 @@ export function BodyMap({ large = false }: { large?: boolean }) {
     const loc = pt.matrixTransform(svg.getScreenCTM()!.inverse());
     addMarker(projection, Math.round((loc.x / vw) * 1000), Math.round((loc.y / vh) * 1000), code, label);
   };
+
+  return (
+    <div className={`bodymap__stage ${className}`} style={{ aspectRatio: `${vw} / ${vh}` }}>
+      <svg ref={svgRef} viewBox={`0 0 ${vw} ${vh}`} className="bodymap__svg" role="img" aria-label={`Схема тела: ${PROJECTION_LABELS[projection]}`}>
+        {def.figure && <FigureClips prefix={clipId} />}
+        {def.figure && <FigureArt figure={def.figure} />}
+        {def.zones.map((z) => (
+          <ShapeEl
+            key={z.code}
+            s={z.shape}
+            className={`bodymap__zone${def.figure ? ' bodymap__zone--overlay' : ''}`}
+            transform={z.transform}
+            clipPath={z.clip ? `url(#${clipId}-${z.clip})` : undefined}
+            data-zone={z.code}
+            onClick={(e: MouseEvent<SVGElement>) => onZoneClick(e, z.code, z.label)}
+            onMouseEnter={() => onHover?.(z.label)}
+            onMouseLeave={() => onHover?.(null)}
+          >
+            <title>{z.label}</title>
+          </ShapeEl>
+        ))}
+      </svg>
+      {visible.map((m) => (
+        <span key={m.id} className="marker mono" style={{ left: `${m.x / 10}%`, top: `${m.y / 10}%` }} title={m.anatomyLabel}>
+          {m.number}
+        </span>
+      ))}
+    </div>
+  );
+}
+
+export function BodyMap({ large = false }: { large?: boolean }) {
+  const projection = useEnc((s) => s.activeProjection);
+  const markers = useEnc((s) => s.markers);
+  const [hover, setHover] = useState<string | null>(null);
+  const def = PROJECTIONS[projection];
 
   return (
     <section className="panel" aria-label="Карта тела">
@@ -55,32 +90,7 @@ export function BodyMap({ large = false }: { large?: boolean }) {
             <span>{def.caption[1]}</span>
           </div>
         )}
-        <div className="bodymap__stage" style={{ aspectRatio: `${vw} / ${vh}` }}>
-          <svg ref={svgRef} viewBox={`0 0 ${vw} ${vh}`} className="bodymap__svg" role="img" aria-label={`Схема тела: ${PROJECTION_LABELS[projection]}`}>
-            {def.figure && <FigureClips prefix={clipId} />}
-            {def.figure && <FigureArt figure={def.figure} />}
-            {def.zones.map((z) => (
-              <ShapeEl
-                key={z.code}
-                s={z.shape}
-                className={`bodymap__zone${def.figure ? ' bodymap__zone--overlay' : ''}`}
-                transform={z.transform}
-                clipPath={z.clip ? `url(#${clipId}-${z.clip})` : undefined}
-                data-zone={z.code}
-                onClick={(e: MouseEvent<SVGElement>) => onZoneClick(e, z.code, z.label)}
-                onMouseEnter={() => setHover(z.label)}
-                onMouseLeave={() => setHover(null)}
-              >
-                <title>{z.label}</title>
-              </ShapeEl>
-            ))}
-          </svg>
-          {visible.map((m) => (
-            <span key={m.id} className="marker mono" style={{ left: `${m.x / 10}%`, top: `${m.y / 10}%` }} title={m.anatomyLabel}>
-              {m.number}
-            </span>
-          ))}
-        </div>
+        <ProjectionCanvas projection={projection} onHover={setHover} />
       </div>
 
       {markers.length > 0 && (

@@ -1,26 +1,35 @@
 import { useEffect, useState } from 'react';
 import { createPatient, fetchQueue, newVisit, type QueueItem } from '../lib/api';
-import { navigate } from '../lib/router';
+import { navigate, useHash } from '../lib/router';
 import { setTheme, toast, useUi } from '../state';
 import { Checkbox, Field, Segmented } from '../components/ui/controls';
 import { Icon } from '../components/ui/Icon';
 import { dateRu, timeHHMM } from '../lib/format';
 import type { Patient, Theme } from '../types';
 
-const STATUS: Record<QueueItem['status'], string> = { WAITING: 'Ожидает', IN_PROGRESS: 'На приеме', COMPLETED: 'Завершен', SIGNED: 'Подписан' };
+const STATUS: Record<QueueItem['status'], string> = { WAITING: 'Ожидает', IN_PROGRESS: 'На приёме', COMPLETED: 'Завершён', SIGNED: 'Подписан' };
 
+const NAV = [
+  { href: '#/', label: 'Очередь', match: (h: string) => h === '' || h === '#/' || h.startsWith('#/encounter') },
+  { href: '#/cashier', label: 'Касса', match: (h: string) => h.startsWith('#/cashier') },
+  { href: '#/day-hospital', label: 'Дневной стационар', match: (h: string) => h.startsWith('#/day-hospital') },
+  { href: '#/portal', label: 'Личный кабинет', match: (h: string) => h.startsWith('#/portal') },
+];
+
+/** Верхнее меню клиники: Очередь · Касса · Дневной стационар · Личный кабинет. */
 export function TopBar({ title }: { title: string }) {
   const theme = useUi((s) => s.theme);
+  const hash = useHash();
+  useEffect(() => {
+    document.title = `${title} — Dermaclinic`;
+  }, [title]);
   return (
     <header className="topbar">
-      <a className="topbar__brand" href="#/">DermEMR</a>
-      <span className="topbar__title">{title}</span>
-      <nav className="topbar__nav">
-        <a href="#/">Очередь</a>
-        <a href="#/day-hospital">Дневной стационар</a>
-        <a href="#/cashier">Касса</a>
-        <a href="#/portal">Личный кабинет</a>
+      <a className="topbar__brand" href="#/">Dermaclinic</a>
+      <nav className="topbar__nav" aria-label="Разделы">
+        {NAV.map((n) => <a key={n.href} href={n.href} aria-current={n.match(hash) ? 'page' : undefined}>{n.label}</a>)}
       </nav>
+      <span className="topbar__title" />
       <Segmented<Theme> size="sm" options={[{ value: 'light', label: 'Свет' }, { value: 'dark', label: 'Тьма' }]} value={theme} onChange={setTheme} />
     </header>
   );
@@ -48,7 +57,7 @@ function NewPatientForm({ onCreated }: { onCreated: (encId: string) => void }) {
     }
   };
   return (
-    <div className="panel newpat">
+    <div className="panel newpat q-new">
       <div className="panel__head"><h2 className="panel__title">Новый пациент</h2></div>
       <Field label="ФИО"><input className="input" value={f.fullName} onChange={(e) => setF({ ...f, fullName: e.target.value })} placeholder="Фамилия Имя Отчество" /></Field>
       <div className="newpat__row">
@@ -75,54 +84,73 @@ function NewPatientForm({ onCreated }: { onCreated: (encId: string) => void }) {
   );
 }
 
+const plural3 = (n: number, a: string, b: string, c: string) => (n % 10 === 1 && n % 100 !== 11 ? a : n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 10 || n % 100 >= 20) ? b : c);
+
 export function QueuePage() {
   const [items, setItems] = useState<QueueItem[] | null>(null);
+  const [newOpen, setNewOpen] = useState(false);
   const load = () => fetchQueue().then(setItems).catch(() => setItems([]));
   useEffect(() => {
     void load();
     const t = setInterval(load, 10000);
     return () => clearInterval(t);
   }, []);
+  const list = items ?? [];
+  const inProgress = list.filter((q) => q.status === 'IN_PROGRESS').length;
+  const waiting = list.filter((q) => q.status === 'WAITING').length;
+  const day = new Date().toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' });
 
   return (
     <div className="page">
-      <TopBar title={`Прием на ${dateRu(Date.now())}`} />
-      <div className="page__body page__body--split">
-        <section className="panel">
-          <div className="panel__head">
-            <h2 className="panel__title">Очередь приема</h2>
-            <span className="panel__hint">Врач: Соколова Е. А.</span>
+      <TopBar title={`Приём на ${dateRu(Date.now())}`} />
+      <div className="page__body q-page">
+        <div className="q-head">
+          <div>
+            <h1 className="q-title">Приём на {day}</h1>
+            <p className="q-sub">
+              {list.length} {plural3(list.length, 'пациент', 'пациента', 'пациентов')} · {inProgress} на приёме · {waiting} {plural3(waiting, 'ожидает', 'ожидают', 'ожидают')}
+            </p>
           </div>
-          {items === null && <p className="muted mono">Загрузка…</p>}
-          <ul className="queue">
-            {items?.map((q) => (
-              <li key={q.id} className={`queue__row is-${q.status.toLowerCase()}`}>
-                <span className={`queue__status is-${q.status.toLowerCase()}`}>{STATUS[q.status]}</span>
-                <div className="queue__who">
-                  <span className="queue__name">{q.patient.fullName}</span>
-                  <span className="queue__meta">
-                    {q.patient.sex === 'F' ? 'Ж' : 'М'}, {q.patient.age} · <span className="mono">{q.patient.cardNumber}</span> · {q.appointmentType === 'PRIMARY' ? 'первичный' : 'повторный'}
-                    {q.startedAt ? <> · начат <span className="mono">{timeHHMM(q.startedAt)}</span></> : null}
-                  </span>
-                  <span className="queue__tags">
-                    {q.patient.allergies.length > 0 && <span className="alert-pill">Аллергия: {q.patient.allergies.join(', ')}</span>}
-                    {q.patient.isPregnantOrLactating && <span className="alert-pill">Беременность</span>}
-                    {q.diagnosis && <span className="queue__dx mono">{q.diagnosis}</span>}
+          <button type="button" className="v-btn v-btn--line v-btn--lg" onClick={() => setNewOpen((v) => !v)}>
+            <Icon name={newOpen ? 'x' : 'plus'} size={18} /> {newOpen ? 'Закрыть' : 'Новый пациент'}
+          </button>
+        </div>
+        {newOpen && <NewPatientForm onCreated={(id) => { void load(); navigate(`/encounter/${id}`); }} />}
+        {items === null && <p className="muted mono">Загрузка…</p>}
+        {items !== null && list.length === 0 && <p className="q-empty">Сегодня в очереди никого нет. Добавьте пациента кнопкой «Новый пациент».</p>}
+        <ul className="q-list">
+          {list.map((q) => {
+            const done = q.status === 'COMPLETED' || q.status === 'SIGNED';
+            const active = q.status === 'IN_PROGRESS';
+            return (
+              <li key={q.id} className={`q-card${active ? ' is-active' : ''}`}>
+                <span className="q-card__avatar"><Icon name="user" size={20} /></span>
+                <div className="q-card__who">
+                  <span className="q-card__name">{q.patient.fullName}</span>
+                  <span className="q-card__meta">
+                    {q.patient.sex === 'F' ? 'Ж' : 'М'} · {q.patient.age} · {q.appointmentType === 'PRIMARY' ? 'первичный' : 'повторный'}
+                    {q.startedAt ? <> · начат в {timeHHMM(q.startedAt)}</> : null}
+                    <span className="mono q-card__card"> · {q.patient.cardNumber}</span>
                   </span>
                 </div>
-                <div className="queue__actions">
-                  {(q.status === 'COMPLETED' || q.status === 'SIGNED') && (
-                    <button type="button" className="btn btn--ghost btn--sm" onClick={async () => navigate(`/encounter/${(await newVisit(q.id)).encounterId}`)}>Повторный визит</button>
+                <div className="q-card__tags">
+                  <span className={`q-tag q-tag--${q.status.toLowerCase()}`}>{STATUS[q.status]}</span>
+                  {q.patient.allergies.length > 0 && <span className="q-tag q-tag--danger" title={q.patient.allergies.join(', ')}>Аллергия</span>}
+                  {q.patient.isPregnantOrLactating && <span className="q-tag q-tag--danger">Беременность</span>}
+                  {q.diagnosis && <span className="q-tag">{q.diagnosis.length > 28 ? `${q.diagnosis.slice(0, 26)}…` : q.diagnosis}</span>}
+                </div>
+                <div className="q-card__actions">
+                  {done && (
+                    <button type="button" className="v-btn v-btn--soft" onClick={async () => navigate(`/encounter/${(await newVisit(q.id)).encounterId}`)}>Повторный визит</button>
                   )}
-                  <button type="button" className="btn btn--instrument btn--sm" onClick={() => navigate(`/encounter/${q.id}`)}>
-                    {q.status === 'WAITING' ? 'Начать прием' : 'Открыть карту'}
+                  <button type="button" className={`v-btn ${active ? 'v-btn--ink' : 'v-btn--line'} v-btn--lg`} onClick={() => navigate(`/encounter/${q.id}`)}>
+                    {active ? 'Продолжить' : q.status === 'WAITING' ? 'Начать приём' : 'Открыть карту'} <Icon name="arrowRight" size={18} />
                   </button>
                 </div>
               </li>
-            ))}
-          </ul>
-        </section>
-        <NewPatientForm onCreated={(id) => { void load(); navigate(`/encounter/${id}`); }} />
+            );
+          })}
+        </ul>
       </div>
     </div>
   );

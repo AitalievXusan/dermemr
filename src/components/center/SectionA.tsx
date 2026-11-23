@@ -6,14 +6,14 @@ import { Icon } from '../ui/Icon';
 import { SmartText } from '../ui/SmartText';
 import type { CalcKey, Severity, Stage } from '../../types';
 
-const STAGES: { value: Stage; label: string }[] = [
+export const STAGES: { value: Stage; label: string }[] = [
   { value: 'PROGRESSIVE', label: 'Прогрессирующая' }, { value: 'STATIONARY', label: 'Стационарная' }, { value: 'REGRESSIVE', label: 'Регрессирующая' },
 ];
-const SEVERITIES: { value: Severity; label: string }[] = [
+export const SEVERITIES: { value: Severity; label: string }[] = [
   { value: 'MILD', label: 'Легкая' }, { value: 'MODERATE', label: 'Средняя' }, { value: 'SEVERE', label: 'Тяжелая' },
 ];
 
-function IcdSearch({ onPick, placeholder }: { onPick: (e: Icd10Entry) => void; placeholder: string }) {
+export function IcdSearch({ onPick, placeholder }: { onPick: (e: Icd10Entry) => void; placeholder: string }) {
   const [q, setQ] = useState('');
   const [active, setActive] = useState(0);
   const results = searchIcd10(q);
