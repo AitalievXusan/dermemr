@@ -10,6 +10,11 @@ import { tr } from '../../lib/i18n';
 export const STAGES: { value: Stage; label: string }[] = [
   { value: 'PROGRESSIVE', label: 'Прогрессирующая' }, { value: 'STATIONARY', label: 'Стационарная' }, { value: 'REGRESSIVE', label: 'Регрессирующая' },
 ];
+/** Витилиго (L80): две стадии — прогрессирующая и ремиссия (вместо «стационарной»). */
+export const VIT_STAGES: { value: Stage; label: string }[] = [
+  { value: 'PROGRESSIVE', label: 'Прогрессирующая' }, { value: 'STATIONARY', label: 'Ремиссия' },
+];
+export const stagesFor = (icd: string | undefined) => (/^L80/i.test(icd || '') ? VIT_STAGES : STAGES);
 export const SEVERITIES: { value: Severity; label: string }[] = [
   { value: 'MILD', label: 'Легкая' }, { value: 'MODERATE', label: 'Средняя' }, { value: 'SEVERE', label: 'Тяжелая' },
 ];
@@ -79,7 +84,7 @@ export function SectionA() {
         </div>
 
         <div className="soap__grid2">
-          <div><span className="soap__label">{tr('Стадия')}</span><Segmented size="sm" options={STAGES} value={d.stage as Stage} onChange={(v) => updateSoap((s) => { s.assessment.primaryDiagnosis.stage = v; })} /></div>
+          <div><span className="soap__label">{tr('Стадия')}</span><Segmented size="sm" options={stagesFor(d.icd10Code)} value={d.stage as Stage} onChange={(v) => updateSoap((s) => { s.assessment.primaryDiagnosis.stage = v; })} /></div>
           <div><span className="soap__label">{tr('Степень тяжести')}</span><Segmented size="sm" options={SEVERITIES} value={d.severity as Severity} onChange={(v) => updateSoap((s) => { s.assessment.primaryDiagnosis.severity = v; })} /></div>
         </div>
 

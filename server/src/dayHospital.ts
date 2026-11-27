@@ -3,8 +3,9 @@ import { HttpError, json, readJson, route } from './http';
 import { audit, newId } from './security';
 import {
   COURSE_DAYS, templateForIcd, templateRows, todayIso,
-  type DayCourse, type DayCourseInput, type DayPattern, type DayRow, type DaySection, type DayTemplate,
+  type AfterRow, type DayCourse, type DayCourseInput, type DayPattern, type DayRow, type DaySection, type DayTemplate, type VitParams,
 } from '../../src/data/dayHospital';
+import { ageOf, buildVit, initialParams, vitHistory } from '../../src/data/vitBuilder';
 
 // Дневной стационар: курсы по 10 дней. Независимый раздел; при создании из приёма
 // данные пациента и диагноз переносятся из визита автоматически.
@@ -31,7 +32,22 @@ function cleanRows(v: unknown): DayRow[] {
     cells: Array.from({ length: COURSE_DAYS }, (_, j) => str(Array.isArray(r.cells) ? r.cells[j] : '', 8)),
     std: r.std === true ? true : r.std === false ? false : null,
     pk: PKS.includes(r.pk as DayPattern) ? (r.pk as DayPattern) : 'manual',
+    ...(r.auto === true ? { auto: true } : {}),
+    ...(r.edited === true ? { edited: true } : {}),
+    ...(r.key ? { key: str(r.key, 30) } : {}),
+    ...(r.why ? { why: str(r.why, 40) } : {}),
   }));
+}
+
+function cleanAfter(v: unknown): AfterRow[] {
+  if (!Array.isArray(v)) throw new HttpError(422, 'after: ожидается массив');
+  return v.slice(0, 30).map((r: Partial<AfterRow>, i) => ({ id: str(r.id, 40) || `af_${Date.now().toString(36)}_${i}`, ru: str(r.ru), uz: str(r.uz), ...(r.auto === true ? { auto: true } : {}) }));
+}
+
+function cleanVit(v: unknown): VitParams {
+  const o = (v ?? {}) as Partial<VitParams>;
+  const course = [1, 2, 3, 4].includes(Number(o.course)) ? (Number(o.course) as VitParams['course']) : 1;
+  return { stage: o.stage === 'stat' ? 'stat' : 'prog', course, setton: o.setton === true, eptaBack: o.eptaBack === true };
 }
 
 function applyInput(c: DayCourse, b: DayCourseInput) {
@@ -46,6 +62,20 @@ function applyInput(c: DayCourse, b: DayCourseInput) {
   if (b.lang === 'ru' || b.lang === 'uz') c.lang = b.lang;
   if (b.status === 'ACTIVE' || b.status === 'DONE') c.status = b.status;
   if (b.rows !== undefined) c.rows = cleanRows(b.rows);
+  if (b.after !== undefined) c.after = cleanAfter(b.after);
+  if (b.vit !== undefined) c.vit = cleanVit(b.vit);
+  if (b.followWeeks !== undefined) c.followWeeks = Math.max(0, Math.min(52, Math.round(Number(b.followWeeks) || 0)));
+}
+
+/** Витилиго: лист по правилам врача — возраст из года рождения, номер курса по прошлым курсам пациента. */
+function buildVitFor(c: DayCourse) {
+  const h = vitHistory(c, courses());
+  const vit = c.vit ?? initialParams(c, h);
+  const built = buildVit({ age: ageOf(c.birthYear, c.startDate), params: vit, startDate: c.startDate, prevDex: h.lastDex, prevStart: h.last?.startDate ?? null });
+  c.vit = vit;
+  c.rows = built.rows;
+  c.after = built.after;
+  c.followWeeks ??= 4;
 }
 
 /** Данные пациента и диагноз из амбулаторного приёма. */
@@ -55,7 +85,8 @@ function fromEncounter(encounterId: string): Partial<DayCourse> {
   const p = db().patients.find((x) => x.id === e.patientId);
   const d = e.soap.assessment.primaryDiagnosis;
   const form = d.clinicalForm && d.clinicalForm !== d.icd10Name ? `, ${d.clinicalForm.toLowerCase()}` : '';
-  const stage = d.stage === 'PROGRESSIVE' ? ', прогрессирующая стадия' : d.stage === 'STATIONARY' ? ', стабильная стадия' : '';
+  const vitiligo = /^L80/i.test(d.icd10Code || '');
+  const stage = d.stage === 'PROGRESSIVE' ? ', прогрессирующая стадия' : d.stage === 'STATIONARY' ? (vitiligo ? ', стадия ремиссии' : ', стабильная стадия') : '';
   return {
     encounterId: e.id,
     patientId: e.patientId,
@@ -90,6 +121,7 @@ export function registerDayHospitalRoutes() {
       ...linked,
     };
     applyInput(c, { ...b, template: undefined, rows: b.rows });
+    if (c.template === 'vit' && b.rows === undefined) buildVitFor(c);
     courses().push(c);
     saveDb();
     audit('CREATE_DAY_COURSE', c.id, req.ip);

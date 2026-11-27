@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { updateSoap, useEnc } from '../state';
-import { IcdSearch, SEVERITIES, STAGES } from '../components/center/SectionA';
+import { IcdSearch, SEVERITIES, stagesFor } from '../components/center/SectionA';
 import { Icon } from '../components/ui/Icon';
 import type { Severity, Stage } from '../types';
 import { Card, Label, Seg, TextField } from './ui';
@@ -34,7 +34,7 @@ export function DiagnosisStep({ onCalc }: { onCalc: () => void }) {
           <Label>{tr('Клиническая форма')}</Label>
           <input className="v-input" value={d.clinicalForm} onChange={(e) => updateSoap((s) => { s.assessment.primaryDiagnosis.clinicalForm = e.target.value; })} placeholder={tr('Например: вульгарный бляшечный псориаз')} />
         </div>
-        <div className="v-field"><Label>{tr('Стадия')}</Label><Seg<Stage> value={d.stage} options={STAGES} onChange={(v) => updateSoap((s) => { s.assessment.primaryDiagnosis.stage = v; })} /></div>
+        <div className="v-field"><Label>{tr('Стадия')}</Label><Seg<Stage> value={d.stage} options={stagesFor(d.icd10Code)} onChange={(v) => updateSoap((s) => { s.assessment.primaryDiagnosis.stage = v; })} /></div>
         <div className="v-field"><Label>{tr('Степень тяжести')}</Label><Seg<Severity> value={d.severity} options={SEVERITIES} onChange={(v) => updateSoap((s) => { s.assessment.primaryDiagnosis.severity = v; })} /></div>
         <div className="v-field">
           <Label>{tr('Индексы')}</Label>

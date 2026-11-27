@@ -6,6 +6,7 @@ import { checkDrug } from './cdss';
 import { applyDictionaries, type Dictionaries } from '../data/dictionaries';
 import type { MediaItem } from '../components/left/media';
 import { templateRows, todayIso, type DayCourse, type DayCourseInput } from '../data/dayHospital';
+import { defaultVitAfter, defaultVitRows } from '../data/vitBuilder';
 
 export interface ServerConfig {
   publicUrl: string;
@@ -302,7 +303,8 @@ export async function createDayCourse(input: DayCourseInput & { fromEncounterId?
   const template = input.template ?? 'empty';
   const c: DayCourse = {
     id: `dh_${Date.now().toString(36)}`, encounterId: input.fromEncounterId ?? null, patientId: null, fio: '', birthYear: '', phone: '', diagnosis: '', doctor: '',
-    startDate: todayIso(), template, lang: 'ru', rows: templateRows(template), status: 'ACTIVE', createdAt: now, updatedAt: now, ...input,
+    startDate: todayIso(), template, lang: 'ru', rows: template === 'vit' ? defaultVitRows(todayIso()) : templateRows(template),
+    ...(template === 'vit' ? { after: defaultVitAfter(todayIso()), followWeeks: 4 } : {}), status: 'ACTIVE', createdAt: now, updatedAt: now, ...input,
   };
   saveLocalCourses([...localCourses(), c]);
   return c;

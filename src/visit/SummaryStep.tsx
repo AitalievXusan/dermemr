@@ -5,7 +5,7 @@ import { rxDrugs } from '../lib/documents';
 import { searchPrice } from '../data/priceList';
 import { dateRu } from '../lib/format';
 import { money, plural } from '../lib/i18n';
-import { SEVERITIES, STAGES } from '../components/center/SectionA';
+import { SEVERITIES, stagesFor } from '../components/center/SectionA';
 import { Icon } from '../components/ui/Icon';
 import type { DocsSelection } from '../types';
 import { Card } from './ui';
@@ -38,7 +38,7 @@ export function SummaryStep({ onDayHospital }: { onDayHospital?: () => void }) {
   const hasRx = rxDrugs(s).length > 0 || P.extemporalPrescriptions.length > 0;
   const setDoc = (k: keyof DocsSelection, v: boolean) => encounter.set((d) => { d.docs[k] = v; });
   const sev = SEVERITIES.find((x) => x.value === dx.severity)?.label;
-  const stage = STAGES.find((x) => x.value === dx.stage)?.label;
+  const stage = stagesFor(dx.icd10Code).find((x) => x.value === dx.stage)?.label;
   const results = searchPrice(q, 5);
   const billing = s.billing;
 

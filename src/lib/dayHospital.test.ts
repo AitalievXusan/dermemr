@@ -36,6 +36,6 @@ describe('дневной стационар', () => {
     expect(templateForIcd('L70.0')).toBe('acne');
     expect(templateForIcd('L40.0')).toBe('empty');
     expect(templateRows('acne').some((r) => isIsotretinoin(r.ru) && isIsotretinoin(r.uz))).toBe(true);
-    expect(templateRows('vit').every((r) => r.cells.length === COURSE_DAYS)).toBe(true);
+    expect(templateRows('vit')).toHaveLength(0); // витилиго собирает конструктор
   });
 });

@@ -759,6 +759,34 @@ input[type='range'] { accent-color: var(--accent-primary); }
 .dh-remove:hover { color: var(--status-danger-text); border-color: var(--status-danger-border); }
 .dh-warn { display: flex; align-items: center; gap: 8px; margin-left: 40px; padding: 8px 12px; border-radius: 8px; background: var(--status-danger-bg); color: var(--status-danger-text); font-size: 14px; font-weight: 600; }
 .dh-legend { font-size: 13px; }
+/* Метки строки: стандарт МЗ, вне стандарта, почему строка в листе (только на экране) */
+.dh-tags { display: flex; flex-wrap: wrap; gap: 6px; }
+.dh-std--out { background: var(--status-warning-bg); color: #7a4a1f; }
+.dh-std--why { background: var(--bg-surface-secondary); color: var(--text-secondary); }
+.dh-hint { display: flex; align-items: center; gap: 8px; margin-left: 40px; padding: 8px 12px; border-radius: 8px; background: var(--status-warning-bg); color: #7a4a1f; font-size: 14px; font-weight: 600; }
+.dh-removed { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin: 8px 0 4px 40px; padding: 10px 14px; border: 1px dashed var(--status-danger-border); border-radius: 8px; background: var(--status-danger-bg); color: var(--status-danger-text); font-size: 14px; min-width: 0; }
+.dh-removed .btn { margin-left: auto; }
+/* Конструктор курса витилиго */
+.dhb { border: 2px solid var(--accent-authority); gap: 16px; }
+.dhb__head { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+.dhb__head .muted { font-size: 14px; }
+.dhb__grid { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1.5fr) minmax(0, 0.8fr) minmax(0, 0.9fr); gap: 16px; align-items: end; }
+.dhb__grid .dh-seg { width: 100%; }
+.dhb__sug { color: var(--status-success-text); font-weight: 600; }
+.dhb__age { display: flex; align-items: center; min-height: 46px; padding: 0 14px; border-radius: 10px; background: var(--bg-surface-secondary); font-size: 15px; font-weight: 600; color: var(--text-primary); }
+.dhb__age.is-child { background: var(--accent-primary-soft); }
+.dhb__applied { display: flex; flex-direction: column; gap: 10px; padding: 14px 16px; border-radius: 10px; background: var(--bg-canvas); }
+.dhb__label { font-size: 12.5px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: var(--text-secondary); }
+.dhb__chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.dhb__chip { padding: 7px 12px; border-radius: 8px; border: 1px solid var(--border-subtle); background: var(--bg-surface-primary); font-size: 14px; line-height: 1.35; }
+.dhb__actions { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; font-size: 13px; }
+@media (max-width: 900px) { .dhb__grid { grid-template-columns: minmax(0, 1fr); } }
+/* Тавсия — рекомендации после курса */
+.dh-after { gap: 10px; }
+.dh-after__row { display: grid; grid-template-columns: 28px minmax(0, 1fr) 40px; gap: 8px; align-items: center; }
+.dh-after__foot { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+.dh-after__follow { display: flex; align-items: center; gap: 10px; font-size: 14px; }
+.dh-after__follow .select { width: auto; min-width: 170px; }
 .dh-actions { display: flex; align-items: center; gap: 12px; }
 
 /* Лист назначений для печати: A4 альбомная */
@@ -787,9 +815,35 @@ input[type='range'] { accent-color: var(--accent-primary); }
 .dhp__mark.is-plus { background: #d6efd9; }
 .dhp__mark.is-minus { background: #fbe1e6; }
 .dhp__mark.is-empty { background: #fdf3c2; }
+.dhp__mark.is-dose { background: #f3e2df; }
 .dhp__legend { font-size: 12px; color: #3d3d3d; }
 .dhp__spacer { flex: 1 1 auto; }
 .dhp__sign { display: flex; gap: 64px; font-size: 13px; }
+.dhp { overflow: hidden; }
+.dhp--next { margin-top: 24px; }
+.dhp__after { display: flex; flex-direction: column; gap: 4px; border: 1px solid #3a3a3a; padding: 8px 12px; font-size: 13px; line-height: 1.35; break-inside: avoid; }
+.dhp__after h2 { margin: 0 0 2px; font-size: 14px; font-weight: 700; }
+.dhp--next .dhp__after h2 { display: none; }
+.dhp__after ol { margin: 0; padding-left: 22px; list-style: decimal; }
+.dhp__after li { display: list-item; margin: 1px 0; }
+.dhp__follow { margin: 4px 0 0; }
+/* Уплотнение, чтобы лист назначений поместился на одну страницу */
+.dhp--c1 { gap: 8px; padding-top: 8mm; padding-bottom: 8mm; }
+.dhp--c1 .dhp__row { height: 26px; }
+.dhp--c1 th, .dhp--c1 td { font-size: 12px; padding: 2px 5px; }
+.dhp--c1 .dhp__mark.is-plus, .dhp--c1 .dhp__mark.is-minus { font-size: 34px; line-height: 18px; }
+.dhp--c2 { gap: 6px; padding-top: 7mm; padding-bottom: 7mm; }
+.dhp--c2 .dhp__head h1 { font-size: 21px; }
+.dhp--c2 .dhp__row { height: 22px; }
+.dhp--c2 th, .dhp--c2 td { font-size: 11px; padding: 1px 4px; line-height: 1.2; }
+.dhp--c2 .dhp__mark.is-plus, .dhp--c2 .dhp__mark.is-minus { font-size: 28px; line-height: 15px; }
+.dhp--c2 .dhp__legend { font-size: 10.5px; }
+.dhp--c3 { gap: 4px; padding-top: 6mm; padding-bottom: 6mm; }
+.dhp--c3 .dhp__head h1 { font-size: 19px; }
+.dhp--c3 .dhp__row { height: 19px; }
+.dhp--c3 th, .dhp--c3 td { font-size: 10px; padding: 0 3px; line-height: 1.15; }
+.dhp--c3 .dhp__mark.is-plus, .dhp--c3 .dhp__mark.is-minus { font-size: 22px; line-height: 13px; }
+.dhp--c3 .dhp__legend { font-size: 10px; }
 
 @media print {
   @page { size: A4 landscape; margin: 0; }
@@ -797,6 +851,7 @@ input[type='range'] { accent-color: var(--accent-primary); }
   .no-print, .toasts { display: none !important; }
   .dhp-wrap { padding: 0; background: #ffffff; overflow: visible; }
   .dhp { box-shadow: none; margin: 0; }
+  .dhp + .dhp { break-before: page; page-break-before: always; margin-top: 0; }
   .dhp * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 }
 .dh-main > *, .dh-page > * { flex: none; }
@@ -813,3 +868,4 @@ a.btn { text-decoration: none; color: inherit; }
 .login__input { height: 48px; font-size: 16px; }
 .login__error { margin: 0; color: var(--status-danger-text); font-size: 14px; }
 .login__btn { width: 100%; justify-content: center; }
+.dh-after__row .dh-remove { height: 40px; }

@@ -167,7 +167,7 @@ export function SummaryA4({ state, photos, verifyBase }: DocProps & { photos: Me
       <p className="a4__dx avoid">
         <span className="mono">{d.icd10Code || '—'}</span> {d.icd10Name}
         {d.clinicalForm ? `. ${d.clinicalForm}` : ''}
-        {d.stage ? `, ${STAGE[d.stage]} стадия` : ''}
+        {d.stage ? (/^L80/i.test(d.icd10Code) && d.stage === 'STATIONARY' ? ', стадия ремиссии' : `, ${STAGE[d.stage]} стадия`) : ''}
         {d.severity ? `, ${SEV[d.severity]} степень тяжести` : ''}.
         {Object.entries(A.calculators).map(([k, v]) => (
           <span key={k} className="mono"> {k} {v!.score}{v!.bsaPercent != null ? `, BSA ${v!.bsaPercent}%` : ''};</span>
