@@ -73,8 +73,9 @@ export function sendFile(res: ServerResponse, file: string, opts: { mime?: strin
   createReadStream(file).pipe(res);
 }
 
-export function sendBuffer(res: ServerResponse, buf: Buffer, opts: { mime: string; download?: string }) {
-  const headers: Record<string, string | number> = { 'Content-Type': opts.mime, 'Content-Length': buf.length, 'Cache-Control': 'no-store' };
+export function sendBuffer(res: ServerResponse, buf: Buffer, opts: { mime: string; download?: string; cacheSeconds?: number }) {
+  const cache = opts.cacheSeconds ? `private, max-age=${opts.cacheSeconds}, immutable` : 'no-store';
+  const headers: Record<string, string | number> = { 'Content-Type': opts.mime, 'Content-Length': buf.length, 'Cache-Control': cache };
   if (opts.download) headers['Content-Disposition'] = `inline; filename*=UTF-8''${encodeURIComponent(opts.download)}`;
   res.writeHead(200, headers);
   res.end(buf);

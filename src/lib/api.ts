@@ -41,25 +41,37 @@ async function req<T>(method: string, path: string, body?: unknown, headers: Rec
 const delay = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 /** Проверка сервера + загрузка конфигурации и справочников. */
-export async function initServer(): Promise<boolean> {
-  try {
-    const ctrl = new AbortController();
-    const t = setTimeout(() => ctrl.abort(), 2500);
-    const h = await fetch('/api/v1/health', { signal: ctrl.signal });
-    clearTimeout(t);
-    if (!h.ok) throw new Error('health');
-    const auth = await req<{ required: boolean; loggedIn: boolean }>('GET', '/api/v1/auth/status').catch(() => ({ required: false, loggedIn: true }));
-    if (auth.required && !auth.loggedIn) {
-      server.needLogin = true;
-      return false;
+/** Демо без сервера: GitHub Pages и файл, открытый с диска. Везде остальное сервер есть всегда. */
+const STATIC_DEMO = location.protocol === 'file:' || location.hostname.endsWith('github.io');
+
+/**
+ * Запуск: один запрос /api/v1/boot (вход, настройки, справочники). Если сервер не ответил,
+ * повторяем, а не уходим в демо-режим: иначе в облаке при медленном ответе врач работал бы
+ * с данными в браузере, которые не видят другие компьютеры.
+ */
+export async function initServer(onWait?: (attempt: number) => void): Promise<boolean> {
+  for (let attempt = 0; ; attempt++) {
+    try {
+      const r = await fetch('/api/v1/boot', { cache: 'no-store', signal: AbortSignal.timeout(STATIC_DEMO ? 2500 : 20000) });
+      if (!r.ok) throw new Error(`boot ${r.status}`);
+      const boot = (await r.json()) as { auth: { required: boolean; loggedIn: boolean }; config?: ServerConfig; dictionaries?: Dictionaries };
+      if (boot.auth.required && !boot.auth.loggedIn) {
+        server.needLogin = true;
+        return false;
+      }
+      server.config = boot.config ?? null;
+      if (boot.dictionaries) applyDictionaries(boot.dictionaries);
+      server.online = true;
+      return true;
+    } catch {
+      if (STATIC_DEMO) {
+        server.online = false;
+        return false;
+      }
+      onWait?.(attempt);
+      await new Promise((ok) => setTimeout(ok, Math.min(1500 * (attempt + 1), 6000)));
     }
-    server.config = await req<ServerConfig>('GET', '/api/v1/config');
-    applyDictionaries(await req<Dictionaries>('GET', '/api/v1/dictionaries'));
-    server.online = true;
-  } catch {
-    server.online = false;
   }
-  return server.online;
 }
 
 /** Вход по общему паролю клиники (облачная версия). */
@@ -141,8 +153,30 @@ export function validateCompletion(state: EncounterState): string[] {
 
 // ---------- Медиа и QR-мост ----------
 export const fetchPatientMedia = (patientId: string) => req<MediaItem[]>('GET', `/api/v1/patients/${patientId}/media`);
-export const uploadMedia = (encounterId: string, file: Blob, markerId: string | null, kind = 'MACRO_PHOTO') =>
-  req<MediaItem>('POST', `/api/v1/encounters/${encounterId}/media?marker_id=${encodeURIComponent(markerId ?? '')}&kind=${kind}`, file, { 'Content-Type': file.type || 'image/jpeg' });
+/**
+ * Снимки с фотоаппарата и телефона весят 3–10 МБ: уменьшаем до 2400 px по длинной стороне
+ * (как на странице загрузки со смартфона). Загрузка в разы быстрее, а облако принимает не больше 4,5 МБ.
+ */
+async function shrinkImage(file: Blob): Promise<Blob> {
+  if (!/^image\/(jpeg|png|webp)$/.test(file.type) || file.size < 1_500_000) return file;
+  try {
+    const img = await createImageBitmap(file);
+    const k = Math.min(1, 2400 / Math.max(img.width, img.height));
+    const c = document.createElement('canvas');
+    c.width = Math.round(img.width * k);
+    c.height = Math.round(img.height * k);
+    c.getContext('2d')!.drawImage(img, 0, 0, c.width, c.height);
+    const out = await new Promise<Blob | null>((ok) => c.toBlob(ok, 'image/jpeg', 0.88));
+    return out && out.size < file.size ? out : file;
+  } catch {
+    return file; // формат, который браузер не открывает (например, HEIC), отправляем как есть
+  }
+}
+
+export const uploadMedia = async (encounterId: string, file: Blob, markerId: string | null, kind = 'MACRO_PHOTO') => {
+  const body = await shrinkImage(file);
+  return req<MediaItem>('POST', `/api/v1/encounters/${encounterId}/media?marker_id=${encodeURIComponent(markerId ?? '')}&kind=${kind}`, body, { 'Content-Type': body.type || 'image/jpeg' });
+};
 export const patchMedia = (id: string, patch: { includeInPdf?: boolean }) => req<MediaItem>('PATCH', `/api/v1/media/${id}`, patch);
 export const createQrSession = (encounterId: string) =>
   req<{ token: string; url: string; expiresAt: number; svg: string }>('POST', `/api/v1/encounters/${encounterId}/qr-session`);

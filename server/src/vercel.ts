@@ -7,10 +7,10 @@ import { Readable, Writable } from 'node:stream';
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { get, put } from '@vercel/blob';
 import { config } from './config';
-import { setDb, setSaveHook, type DbShape } from './db';
+import type { DbShape } from './db';
+import { requestContext, type RequestContext } from './context';
 import { seedDb } from './seed';
 import { dispatch, json, readBody, type Req } from './http';
-import { setEmitHook } from './realtime';
 import { applyStoredDictionaries, registerRoutes } from './routes';
 import { registerDayHospitalRoutes } from './dayHospital';
 import { guard, registerAuthRoutes } from './auth';
@@ -21,17 +21,22 @@ registerDayHospitalRoutes();
 registerAuthRoutes();
 
 const DB_PATH = 'db/db.json';
+const REQUEST_TIMEOUT_MS = 25000;
 const MAX_EVENTS = 300;
+
+// Обращение к Blob не должно подвешивать запрос: ограничиваем время каждой операции
+const BLOB_TIMEOUT_MS = 12000;
+const signal = () => AbortSignal.timeout(BLOB_TIMEOUT_MS);
 
 const toBuffer = async (stream: ReadableStream<Uint8Array>) => Buffer.from(await new Response(stream).arrayBuffer());
 const isPrecondition = (e: unknown) => /precondition/i.test(`${(e as Error)?.name} ${(e as Error)?.message}`);
 
 setFileStore({
   async put(kind: FileKind, name: string, buf: Buffer, mime: string) {
-    await put(`${kind}/${name}`, buf, { access: 'private', allowOverwrite: true, addRandomSuffix: false, contentType: mime });
+    await put(`${kind}/${name}`, buf, { access: 'private', allowOverwrite: true, addRandomSuffix: false, contentType: mime, abortSignal: signal() });
   },
   async get(kind: FileKind, name: string) {
-    const r = await get(`${kind}/${name}`, { access: 'private' });
+    const r = await get(`${kind}/${name}`, { access: 'private', abortSignal: signal() });
     return r && r.statusCode === 200 && r.stream ? toBuffer(r.stream) : null;
   },
 });
@@ -59,7 +64,7 @@ async function seedRemote(): Promise<void> {
 async function loadRemote(readOnly: boolean): Promise<{ json: string; etag: string }> {
   if (readOnly && cache && Date.now() - cache.checkedAt < READ_TTL_MS) return cache;
   for (let i = 0; i < 2; i++) {
-    const r = await get(DB_PATH, { access: 'private', useCache: false, ifNoneMatch: cache?.etag });
+    const r = await get(DB_PATH, { access: 'private', useCache: false, ifNoneMatch: cache?.etag, abortSignal: signal() });
     if (!r) { await seedRemote(); continue; }
     if (r.statusCode === 304 && cache) { cache.checkedAt = Date.now(); return cache; }
     if (r.stream) {
@@ -72,7 +77,7 @@ async function loadRemote(readOnly: boolean): Promise<{ json: string; etag: stri
 
 async function saveRemote(data: DbShape, etag: string): Promise<void> {
   const body = JSON.stringify(data);
-  const r = await put(DB_PATH, body, { access: 'private', allowOverwrite: true, addRandomSuffix: false, contentType: 'application/json', ifMatch: etag });
+  const r = await put(DB_PATH, body, { access: 'private', allowOverwrite: true, addRandomSuffix: false, contentType: 'application/json', ifMatch: etag, abortSignal: signal() });
   const newTag = (r as { etag?: string }).etag;
   cache = newTag ? { json: body, etag: newTag, checkedAt: Date.now() } : null;
 }
@@ -94,6 +99,7 @@ class CapturedResponse extends Writable {
     cb();
   }
   flushTo(out: ServerResponse) {
+    if (out.headersSent || out.writableEnded) return; // клиенту уже ответили (истекло время)
     const body = Buffer.concat(this.chunks);
     for (const [k, v] of Object.entries(this.headers)) out.setHeader(k, v);
     out.setHeader('Content-Length', body.length);
@@ -113,14 +119,6 @@ function makeReq(raw: IncomingMessage, body: Buffer, url: URL): Req {
 
 const finished = (w: Writable) => (w.writableFinished ? Promise.resolve() : new Promise<void>((ok) => w.once('finish', () => ok())));
 
-// В одном экземпляре функции запросы обрабатываются по очереди: модуль db() общий
-let queue: Promise<unknown> = Promise.resolve();
-const serial = <T>(fn: () => Promise<T>) => {
-  const next = queue.then(fn, fn);
-  queue = next.catch(() => undefined);
-  return next;
-};
-
 // Ответы, которым база не нужна (проверка сервера и входа), — без обращения к Blob
 const NO_DB = new Set(['/api/v1/health', '/api/v1/auth/status', '/api/v1/auth/login', '/api/v1/auth/logout']);
 
@@ -136,28 +134,30 @@ async function handle(raw: IncomingMessage, out: ServerResponse, body: Buffer, u
     if (attempt) await new Promise((r) => setTimeout(r, 50 + Math.random() * 150 * attempt));
     const remote = await loadRemote(readOnly && attempt === 0);
     const data = JSON.parse(remote.json) as DbShape;
-    let dirty = false;
-    setDb(data);
-    setSaveHook(() => { dirty = true; });
-    setEmitHook((room, type, payload) => {
-      const ev = data.events ?? (data.events = []);
-      ev.push({ seq: (ev[ev.length - 1]?.seq ?? 0) + 1, room, type, payload, at: Date.now() });
-      if (ev.length > MAX_EVENTS) ev.splice(0, ev.length - MAX_EVENTS);
-      dirty = true;
-    });
-    applyStoredDictionaries();
-
-    const req = makeReq(raw, body, url);
+    const ctx: RequestContext = {
+      data,
+      dirty: false,
+      emit(room, type, payload) {
+        const ev = data.events ?? (data.events = []);
+        ev.push({ seq: (ev[ev.length - 1]?.seq ?? 0) + 1, room, type, payload, at: Date.now() });
+        if (ev.length > MAX_EVENTS) ev.splice(0, ev.length - MAX_EVENTS);
+        ctx.dirty = true;
+      },
+    };
     const res = new CapturedResponse();
-    res.setHeader('X-Content-Type-Options', 'nosniff');
-    res.setHeader('Referrer-Policy', 'no-referrer');
-    if (guard(req, res as unknown as ServerResponse)) {
-      const handled = await dispatch(req, res as unknown as ServerResponse);
-      if (!handled) json(res as unknown as ServerResponse, 404, { error: 'Не найдено' });
-    }
-    await finished(res);
+    await requestContext.run(ctx, async () => {
+      applyStoredDictionaries();
+      const req = makeReq(raw, body, url);
+      res.setHeader('X-Content-Type-Options', 'nosniff');
+      res.setHeader('Referrer-Policy', 'no-referrer');
+      if (guard(req, res as unknown as ServerResponse)) {
+        const handled = await dispatch(req, res as unknown as ServerResponse);
+        if (!handled) json(res as unknown as ServerResponse, 404, { error: 'Не найдено' });
+      }
+      await finished(res);
+    });
 
-    if (dirty) {
+    if (ctx.dirty) {
       try {
         await saveRemote(data, remote.etag);
       } catch (e) {
@@ -184,7 +184,18 @@ export default async function handler(raw: IncomingMessage, out: ServerResponse)
       if (host) config.publicUrl = `https://${String(host).split(',')[0].trim()}`;
     }
     const body = raw.method === 'GET' || raw.method === 'HEAD' ? Buffer.alloc(0) : await readBody(raw, 25 * 1024 * 1024);
-    await serial(() => handle(raw, out, body, url));
+    const started = Date.now();
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const timeout = new Promise<'timeout'>((ok) => { timer = setTimeout(() => ok('timeout'), REQUEST_TIMEOUT_MS); });
+    const work = handle(raw, out, body, url).then(() => 'done' as const);
+    const result = await Promise.race([work, timeout]);
+    if (result === 'timeout') work.catch((e) => console.error('[vercel] после таймаута:', url.pathname, e));
+    clearTimeout(timer);
+    const ms = Date.now() - started;
+    if (result === 'timeout') {
+      console.error('[timeout]', raw.method, url.pathname, `${ms}ms`);
+      if (!out.headersSent) json(out, 504, { error: 'Сервер не ответил вовремя. Повторите действие.' });
+    } else if (ms > 3000) console.warn('[slow]', raw.method, url.pathname, `${ms}ms`);
   } catch (e) {
     console.error('[vercel]', raw.method, raw.url, e);
     if (!out.headersSent) json(out, 500, { error: 'Внутренняя ошибка сервера' });

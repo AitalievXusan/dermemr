@@ -11,8 +11,9 @@ import './styles/visit.css';
 document.documentElement.dataset.theme = ui.get().theme;
 document.documentElement.lang = getLang() === 'uz' ? 'uz-Cyrl' : 'ru';
 
-// Сервер (npm start) → очередь, касса, PDF, мессенджеры. Без сервера — демо-визит в браузере.
-initServer().finally(() => {
+// Сервер (npm start или облако) → очередь, касса, PDF, мессенджеры. Без сервера (GitHub Pages) — демо-визит в браузере.
+const bootMsg = (text: string) => { const el = document.getElementById('boot-msg'); if (el) el.textContent = text; };
+initServer((attempt) => bootMsg(attempt === 0 ? 'Подключение к серверу…' : `Сервер не отвечает, пробую снова (${attempt + 1})…`)).finally(() => {
   initRealtime();
   createRoot(document.getElementById('root')!).render(
     <StrictMode>

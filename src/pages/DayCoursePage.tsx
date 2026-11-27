@@ -9,6 +9,7 @@ import {
 import { Icon } from '../components/ui/Icon';
 import { FlagRu, FlagUz } from '../components/ui/Flags';
 import { rememberDoctor } from './DayHospitalPage';
+import { tr } from '../lib/i18n';
 
 type Editable = Omit<DayCourse, 'id' | 'createdAt' | 'updatedAt'>;
 const SECTIONS: DaySection[] = ['drug', 'top', 'phys'];
@@ -35,6 +36,9 @@ function Seg<T extends string>({ value, options, onChange, label }: { value: T; 
   );
 }
 
+/** Последнее незавершённое сохранение курса: список курсов ждёт его, чтобы не показать старые данные. */
+export let lastCourseSave: Promise<void> = Promise.resolve();
+
 export function DayCoursePage({ id }: { id: string }) {
   const [course, setCourse] = useState<DayCourse | null>(null);
   const [error, setError] = useState('');
@@ -42,25 +46,46 @@ export function DayCoursePage({ id }: { id: string }) {
   const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const pending = useRef<DayCourseInput>({});
 
-  useEffect(() => {
-    getDayCourse(id).then(setCourse).catch((e) => setError((e as Error).message));
-    return () => clearTimeout(timer.current);
-  }, [id]);
+  const inflight = useRef<Promise<void> | null>(null);
 
-  const flush = async () => {
+  // Сохранения идут строго по очереди: следующее ждёт ответа на предыдущее (в облаке ответ ~0,5 с),
+  // иначе изменения могли бы прийти на сервер в другом порядке.
+  const flush = async (): Promise<void> => {
+    if (inflight.current) {
+      await inflight.current;
+      return flush();
+    }
     const patch = pending.current;
     pending.current = {};
     if (!Object.keys(patch).length) return;
     setSaving('saving');
+    inflight.current = (async () => {
+      try {
+        await patchDayCourse(id, patch);
+        setSaving(Object.keys(pending.current).length ? 'pending' : 'saved');
+      } catch (e) {
+        setSaving('pending');
+        pending.current = { ...patch, ...pending.current };
+        toast(`${tr('Курс не сохранён')}: ${(e as Error).message}`, 'danger');
+      }
+    })();
+    lastCourseSave = inflight.current;
     try {
-      await patchDayCourse(id, patch);
-      setSaving('saved');
-    } catch (e) {
-      setSaving('pending');
-      pending.current = { ...patch, ...pending.current };
-      toast(`Курс не сохранён: ${(e as Error).message}`, 'danger');
+      await inflight.current;
+    } finally {
+      inflight.current = null;
     }
   };
+
+  useEffect(() => {
+    getDayCourse(id).then(setCourse).catch((e) => setError((e as Error).message));
+    return () => {
+      // уходя со страницы, не теряем последние правки (раньше они пропадали, если не прошло 0,6 с)
+      clearTimeout(timer.current);
+      lastCourseSave = flush();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id]);
 
   const update = (patch: Partial<Editable>) => {
     setCourse((c) => (c ? { ...c, ...patch } : c));

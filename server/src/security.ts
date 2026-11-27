@@ -26,7 +26,10 @@ export function verifyToken<T extends Record<string, unknown>>(token: string): (
 
 /** Presigned URL для медиа и PDF (SPEC §7.2: временные ссылки на 15 минут). */
 export function presign(path: string, ttlMs = config.mediaTtlMs): string {
-  const exp = Date.now() + ttlMs;
+  // срок округляется до 10 минут: ссылка на тот же файл не меняется при каждом запросе,
+  // и браузер берёт снимок из кэша, а не скачивает заново
+  const step = 10 * 60 * 1000;
+  const exp = Math.ceil((Date.now() + ttlMs) / step) * step;
   return `${path}?exp=${exp}&sig=${hmac(`${path}:${exp}`)}`;
 }
 

@@ -100,6 +100,17 @@ export function QueuePage() {
     const t = setInterval(load, 10000);
     return () => clearInterval(t);
   }, []);
+  const [opening, setOpening] = useState<string | null>(null); // повторный визит создаётся — кнопка занята
+  const repeatVisit = async (id: string) => {
+    if (opening) return;
+    setOpening(id);
+    try {
+      navigate(`/encounter/${(await newVisit(id)).encounterId}`);
+    } catch (e) {
+      toast(`${t('Не удалось создать визит')}: ${(e as Error).message}`, 'danger');
+      setOpening(null);
+    }
+  };
   const list = items ?? [];
   const inProgress = list.filter((q) => q.status === 'IN_PROGRESS').length;
   const waiting = list.filter((q) => q.status === 'WAITING').length;
@@ -146,7 +157,7 @@ export function QueuePage() {
                 </div>
                 <div className="q-card__actions">
                   {done && (
-                    <button type="button" className="v-btn v-btn--soft" onClick={async () => navigate(`/encounter/${(await newVisit(q.id)).encounterId}`)}>{t('Повторный визит')}</button>
+                    <button type="button" className="v-btn v-btn--soft" disabled={!!opening} onClick={() => void repeatVisit(q.id)}>{opening === q.id ? t('Создаю визит…') : t('Повторный визит')}</button>
                   )}
                   <button type="button" className={`v-btn ${active ? 'v-btn--ink' : 'v-btn--line'} v-btn--lg`} onClick={() => navigate(`/encounter/${q.id}`)}>
                     {active ? t('Продолжить') : q.status === 'WAITING' ? t('Начать приём') : t('Открыть карту')} <Icon name="arrowRight" size={18} />

@@ -2,6 +2,7 @@ import { config } from './config';
 import { db, saveDb, type CartRec, type DeliveryRec, type DocRec, type EncounterRec, type MediaRec } from './db';
 import { html, HttpError, json, readBody, readJson, route, sendBuffer } from './http';
 import { getFile, putFile } from './storage';
+import { isLoggedIn } from './auth';
 import { emit } from './realtime';
 import { audit, checkPresigned, newId, presign, signToken, verifyToken } from './security';
 import { sniffMime, stripMetadata } from './exif';
@@ -149,16 +150,22 @@ async function storeMedia(buf: Buffer, declaredMime: string | undefined, e: Enco
 export function registerRoutes() {
   route('GET', '/api/v1/health', (_req, res) => json(res, 200, { ok: true, app: 'dermemr' }));
 
-  route('GET', '/api/v1/config', (_req, res) =>
-    json(res, 200, {
-      publicUrl: config.publicUrl,
-      pdfEngine: browserPath() ? 'chromium' : 'none',
-      realtime: config.vercel ? 'poll' : 'ws',
-      auth: !!config.appPassword,
-      channels: { PATIENT_PORTAL: 'live', TELEGRAM: channelMode('TELEGRAM'), WHATSAPP: channelMode('WHATSAPP'), MAX: channelMode('MAX') },
-      clinic: CLINIC,
-    }),
-  );
+  const configPayload = () => ({
+    publicUrl: config.publicUrl,
+    pdfEngine: browserPath() ? 'chromium' : 'none',
+    realtime: config.vercel ? 'poll' : 'ws',
+    auth: !!config.appPassword,
+    channels: { PATIENT_PORTAL: 'live', TELEGRAM: channelMode('TELEGRAM'), WHATSAPP: channelMode('WHATSAPP'), MAX: channelMode('MAX') },
+    clinic: CLINIC,
+  });
+  route('GET', '/api/v1/config', (_req, res) => json(res, 200, configPayload()));
+
+  // Запуск приложения одним запросом (вход, настройки, справочники): в облаке каждый запрос — это задержка сети
+  route('GET', '/api/v1/boot', (req, res) => {
+    const auth = { required: !!config.appPassword, loggedIn: isLoggedIn(req) };
+    if (auth.required && !auth.loggedIn) return json(res, 200, { auth });
+    json(res, 200, { auth, config: configPayload(), dictionaries: db().dictionaries });
+  });
 
   // --- Очередь, пациенты, визиты ---
   route('GET', '/api/v1/encounters', (_req, res) => {
@@ -321,7 +328,7 @@ export function registerRoutes() {
     const m = db().media.find((x) => x.id === req.params.id);
     const buf = m && (await getFile('media', m.file));
     if (!m || !buf) throw new HttpError(404, 'Файл не найден');
-    sendBuffer(res, buf, { mime: m.mime });
+    sendBuffer(res, buf, { mime: m.mime, cacheSeconds: 3600 }); // снимок по id не меняется
   });
 
   // --- QR-мост со смартфоном (SPEC §3.2) ---

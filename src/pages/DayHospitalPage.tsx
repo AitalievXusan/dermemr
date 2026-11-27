@@ -6,6 +6,7 @@ import { COURSE_DAYS, courseDay, ddmmyyyy, type DayCourse } from '../data/dayHos
 import { Icon } from '../components/ui/Icon';
 import { TopBar } from './QueuePage';
 import { ageText, getLang, tr } from '../lib/i18n';
+import { lastCourseSave } from './DayCoursePage';
 
 const DOCTOR_KEY = 'dermemr-dh-doctor';
 export const lastDoctor = () => {
@@ -22,12 +23,17 @@ export const rememberDoctor = (name: string) => {
 };
 
 /** Создать курс (новый пациент или из амбулаторного приёма) и открыть его. */
+let creating = false; // повторное нажатие, пока сервер отвечает, не создаёт второй пустой курс
 export async function startDayCourse(fromEncounterId?: string) {
+  if (creating) return;
+  creating = true;
   try {
     const c = await createDayCourse({ fromEncounterId, doctor: lastDoctor() || undefined, lang: getLang() });
     navigate(`/day-hospital/${c.id}`);
   } catch (e) {
     toast(`${tr('Не удалось создать курс')}: ${(e as Error).message}`, 'danger');
+  } finally {
+    creating = false;
   }
 }
 
@@ -48,9 +54,16 @@ export function DayHospitalPage() {
   const [items, setItems] = useState<DayCourse[] | null>(null);
   const [queue, setQueue] = useState<QueueItem[]>([]);
   const [showDone, setShowDone] = useState(false);
+  const [busy, setBusy] = useState<string | null>(null); // какой курс сейчас создаётся
+  const start = async (key: string, fromEncounterId?: string) => {
+    setBusy(key);
+    await startDayCourse(fromEncounterId);
+    setBusy(null);
+  };
 
   useEffect(() => {
-    listDayCourses().then(setItems).catch(() => setItems([]));
+    // если только что вернулись из курса, сначала дожидаемся его сохранения
+    void lastCourseSave.then(() => listDayCourses()).then(setItems).catch(() => setItems([]));
     if (server.online) fetchQueue().then(setQueue).catch(() => setQueue([]));
   }, []);
 
@@ -68,8 +81,8 @@ export function DayHospitalPage() {
             <h1 className="dh-title">{tr('Дневной стационар')}</h1>
             <p className="muted">{tr('Курсы лечения по 10 дней (без воскресений) с листом назначений для печати на русском и узбекском.')}</p>
           </div>
-          <button type="button" className="btn btn--accent btn--tall" onClick={() => void startDayCourse()}>
-            <Icon name="plus" /> {tr('Новый пациент')}
+          <button type="button" className="btn btn--accent btn--tall" disabled={!!busy} onClick={() => void start('new')}>
+            <Icon name="plus" /> {busy === 'new' ? tr('Создаю курс…') : tr('Новый пациент')}
           </button>
         </div>
 
@@ -112,8 +125,8 @@ export function DayHospitalPage() {
                   <li key={q.id}>
                     <span><strong>{q.patient.fullName}</strong> <span className="muted">· {ageText(q.patient.age)}</span></span>
                     <span className="muted">{q.diagnosis || tr('диагноз не указан')}</span>
-                    <button type="button" className="btn btn--outline" onClick={() => void startDayCourse(q.id)}>
-                      <Icon name="bed" /> {tr('Оформить курс')}
+                    <button type="button" className="btn btn--outline" disabled={!!busy} onClick={() => void start(q.id, q.id)}>
+                      <Icon name="bed" /> {busy === q.id ? tr('Создаю курс…') : tr('Оформить курс')}
                     </button>
                   </li>
                 ))}

@@ -1,4 +1,5 @@
 import { existsSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
+import { requestContext } from './context';
 import { resolve } from 'node:path';
 import { config } from './config';
 import type {
@@ -116,28 +117,19 @@ export function loadDb(seed: () => DbShape): DbShape {
   return data;
 }
 
-export const db = () => data;
-
-/** Облачный режим: данные загружаются из хранилища на каждый запрос. */
-export function setDb(d: DbShape) {
-  data = d;
-}
-
-// В облаке saveDb() только помечает данные изменёнными — запись делает обработчик запроса.
-let saveHook: (() => void) | null = null;
-export function setSaveHook(fn: (() => void) | null) {
-  saveHook = fn;
-}
+export const db = () => requestContext.getStore()?.data ?? data;
 
 /** Отложенная атомарная запись (tmp + rename), чтобы не терять данные при сбое. */
 export function saveDb() {
-  if (saveHook) return saveHook();
+  // В облаке saveDb() только помечает копию запроса изменённой — запись делает обработчик запроса.
+  const ctx = requestContext.getStore();
+  if (ctx) { ctx.dirty = true; return; }
   clearTimeout(timer);
   timer = setTimeout(flushDb, 200);
 }
 
 export function flushDb() {
-  if (saveHook) return;
+  if (requestContext.getStore()) return;
   const tmp = `${FILE}.tmp`;
   writeFileSync(tmp, JSON.stringify(data));
   renameSync(tmp, FILE);

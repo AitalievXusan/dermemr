@@ -12,7 +12,7 @@ const TTL = 30 * 24 * 60 * 60 * 1000; // 30 дней
 
 /** Без входа доступны: проверка сервера, справочники, вход, страницы для пациента и смартфона, ссылки с подписью. */
 const PUBLIC: RegExp[] = [
-  /^\/api\/v1\/(health|config|dictionaries)$/,
+  /^\/api\/v1\/(health|config|dictionaries|boot)$/,
   /^\/api\/v1\/auth\//,
   /^\/api\/v1\/portal\//, // личный кабинет пациента (случайный id)
   /^\/api\/v1\/m\/session$/, /^\/api\/v1\/media\/mobile-upload$/, /^\/m\/upload$/, // смартфон по QR (подписанный токен)

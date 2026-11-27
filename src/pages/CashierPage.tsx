@@ -33,11 +33,20 @@ export function CashierPage() {
     return () => { leaveRoom('cashier'); offs.forEach((o) => o()); };
   }, []);
 
+  const [paying, setPaying] = useState<string | null>(null);
   const pay = async (c: Cart) => {
-    const paid = await payCart(c.id);
-    setCarts((list) => list.map((x) => (x.id === c.id ? paid : x)));
-    setFresh((s) => { const n = new Set(s); n.delete(c.id); return n; });
-    toast(`${tr('Оплата принята')} · ${money(c.totalRendered)}`, 'success');
+    if (paying) return; // двойное нажатие не проводит оплату дважды
+    setPaying(c.id);
+    try {
+      const paid = await payCart(c.id);
+      setCarts((list) => list.map((x) => (x.id === c.id ? paid : x)));
+      setFresh((s) => { const n = new Set(s); n.delete(c.id); return n; });
+      toast(`${tr('Оплата принята')} · ${money(c.totalRendered)}`, 'success');
+    } catch (e) {
+      toast(`${tr('Оплата не прошла')}: ${(e as Error).message}`, 'danger');
+    } finally {
+      setPaying(null);
+    }
   };
 
   return (
@@ -69,7 +78,7 @@ export function CashierPage() {
                     </ul>
                   </>
                 )}
-                <button type="button" className={`btn btn--block ${c.status === 'PAID' ? 'btn--instrument is-done' : 'btn--accent'}`} disabled={c.status === 'PAID'} onClick={() => pay(c)}>
+                <button type="button" className={`btn btn--block ${c.status === 'PAID' ? 'btn--instrument is-done' : 'btn--accent'}`} disabled={c.status === 'PAID' || paying === c.id} onClick={() => void pay(c)}>
                   {c.status === 'PAID' ? `${tr('Оплачено')} ${c.paidAt ? timeHHMM(c.paidAt) : ''} ✓` : tr('Принять оплату')}
                 </button>
               </article>
