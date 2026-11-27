@@ -5,7 +5,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { Readable, Writable } from 'node:stream';
 import type { IncomingMessage, ServerResponse } from 'node:http';
-import { get, put } from '@vercel/blob';
+import { get, head, put } from '@vercel/blob';
 import { config } from './config';
 import type { DbShape } from './db';
 import { requestContext, type RequestContext } from './context';
@@ -61,23 +61,38 @@ async function seedRemote(): Promise<void> {
   }
 }
 
+const isNotFound = (e: unknown) => /not.?found/i.test(`${(e as Error)?.name} ${(e as Error)?.message}`);
+
+// Версию базы берём из head(): только этот ETag принимает put(..., { ifMatch }).
+// ETag из ответа get() приходит через CDN в другом виде — из-за этого раньше ни одна запись
+// не проходила проверку версии (ошибка «Данные одновременно изменили на другом компьютере»).
+async function remoteEtag(): Promise<string> {
+  try {
+    return (await head(DB_PATH, { abortSignal: signal() })).etag;
+  } catch (e) {
+    if (!isNotFound(e)) throw e;
+    await seedRemote();
+    return (await head(DB_PATH, { abortSignal: signal() })).etag;
+  }
+}
+
 async function loadRemote(readOnly: boolean): Promise<{ json: string; etag: string }> {
   if (readOnly && cache && Date.now() - cache.checkedAt < READ_TTL_MS) return cache;
-  for (let i = 0; i < 2; i++) {
-    const r = await get(DB_PATH, { access: 'private', useCache: false, ifNoneMatch: cache?.etag, abortSignal: signal() });
-    if (!r) { await seedRemote(); continue; }
-    if (r.statusCode === 304 && cache) { cache.checkedAt = Date.now(); return cache; }
-    if (r.stream) {
-      cache = { json: (await toBuffer(r.stream)).toString('utf8'), etag: r.blob.etag, checkedAt: Date.now() };
-      return cache;
-    }
+  const etag = await remoteEtag();
+  if (cache && cache.etag === etag) {
+    cache.checkedAt = Date.now();
+    return cache;
   }
-  throw new Error('Не удалось прочитать базу из Vercel Blob');
+  const r = await get(DB_PATH, { access: 'private', useCache: false, abortSignal: signal() });
+  if (!r?.stream) throw new Error('Не удалось прочитать базу из Vercel Blob');
+  cache = { json: (await toBuffer(r.stream)).toString('utf8'), etag, checkedAt: Date.now() };
+  return cache;
 }
 
 async function saveRemote(data: DbShape, etag: string): Promise<void> {
   const body = JSON.stringify(data);
   const r = await put(DB_PATH, body, { access: 'private', allowOverwrite: true, addRandomSuffix: false, contentType: 'application/json', ifMatch: etag, abortSignal: signal() });
+  // ETag новой версии, если SDK его вернул; иначе следующий запрос перечитает базу
   const newTag = (r as { etag?: string }).etag;
   cache = newTag ? { json: body, etag: newTag, checkedAt: Date.now() } : null;
 }
@@ -161,7 +176,11 @@ async function handle(raw: IncomingMessage, out: ServerResponse, body: Buffer, u
       try {
         await saveRemote(data, remote.etag);
       } catch (e) {
-        if (isPrecondition(e)) { cache = null; continue; } // базу только что изменил другой компьютер — повторяем
+        if (isPrecondition(e)) { // базу только что изменил другой компьютер — повторяем
+          console.warn('[db] версия изменилась, повтор', attempt + 1, url.pathname);
+          cache = null;
+          continue;
+        }
         throw e;
       }
     }
