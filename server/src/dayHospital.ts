@@ -2,10 +2,11 @@ import { db, saveDb } from './db';
 import { HttpError, json, readJson, route } from './http';
 import { audit, newId } from './security';
 import {
-  COURSE_DAYS, templateForIcd, templateRows, todayIso,
-  type AfterRow, type DayCourse, type DayCourseInput, type DayPattern, type DayRow, type DaySection, type DayTemplate, type VitParams,
+  COURSE_DAYS, NOS_KEYS, todayIso,
+  type AfterRow, type DayCourse, type DayCourseInput, type DayPattern, type DayRow, type DaySection, type DayTemplate, type NosParams, type VitParams,
 } from '../../src/data/dayHospital';
 import { ageOf, buildVit, initialParams, vitHistory } from '../../src/data/vitBuilder';
+import { buildNos, customKey, defaultLabs, initialNosParams, nosDef, previousNos, templateForIcd, type CustomTemplate } from '../../src/data/nosologies';
 
 // Дневной стационар: курсы по 10 дней. Независимый раздел; при создании из приёма
 // данные пациента и диагноз переносятся из визита автоматически.
@@ -20,7 +21,9 @@ const find = (id: string) => {
 const str = (v: unknown, max = 300) => (typeof v === 'string' ? v.slice(0, max) : '');
 const SECS: DaySection[] = ['drug', 'top', 'phys'];
 const PKS: DayPattern[] = ['daily', 'odd', 'even', 'home', 'manual'];
-const TPLS: DayTemplate[] = ['vit', 'acne', 'empty'];
+const TPLS: readonly DayTemplate[] = NOS_KEYS;
+/** Свои шаблоны врачей: ключ «нозология:форма». */
+const customs = (): Record<string, CustomTemplate> => (db().dayTemplates ??= {}) as Record<string, CustomTemplate>;
 
 function cleanRows(v: unknown): DayRow[] {
   if (!Array.isArray(v)) throw new HttpError(422, 'rows: ожидается массив');
@@ -50,6 +53,23 @@ function cleanVit(v: unknown): VitParams {
   return { stage: o.stage === 'stat' ? 'stat' : 'prog', course, setton: o.setton === true, eptaBack: o.eptaBack === true };
 }
 
+function cleanNos(v: unknown, template: DayTemplate): NosParams {
+  const o = (v ?? {}) as Partial<NosParams>;
+  const def = nosDef(template);
+  const out: NosParams = {};
+  if (def.forms) out.form = def.forms.some((f) => f.v === o.form) ? String(o.form) : def.forms[0].v;
+  if (def.stages) out.stage = def.stages.includes(o.stage as never) ? o.stage : 'prog';
+  if (def.course) out.course = [1, 2, 3, 4].includes(Number(o.course)) ? (Number(o.course) as NosParams['course']) : 1;
+  if (def.minox) out.minox = o.minox === '2' || o.minox === '0' ? o.minox : '5';
+  if (def.proc) out.proc = o.proc === 'prp' ? 'prp' : 'alt';
+  return out;
+}
+
+function cleanLabs(v: unknown): string[] {
+  if (!Array.isArray(v)) throw new HttpError(422, 'labs: ожидается массив');
+  return [...new Set(v.slice(0, 30).map((x) => str(x, 120)).filter(Boolean))];
+}
+
 function applyInput(c: DayCourse, b: DayCourseInput) {
   (['fio', 'birthYear', 'phone', 'diagnosis', 'doctor'] as const).forEach((k) => {
     if (b[k] !== undefined) c[k] = str(b[k]);
@@ -64,6 +84,9 @@ function applyInput(c: DayCourse, b: DayCourseInput) {
   if (b.rows !== undefined) c.rows = cleanRows(b.rows);
   if (b.after !== undefined) c.after = cleanAfter(b.after);
   if (b.vit !== undefined) c.vit = cleanVit(b.vit);
+  if (b.nos !== undefined) c.nos = cleanNos(b.nos, c.template);
+  if (b.labs !== undefined) c.labs = cleanLabs(b.labs);
+  if (b.sex !== undefined) c.sex = b.sex === 'M' || b.sex === 'F' ? b.sex : '';
   if (b.followWeeks !== undefined) c.followWeeks = Math.max(0, Math.min(52, Math.round(Number(b.followWeeks) || 0)));
 }
 
@@ -78,23 +101,37 @@ function buildVitFor(c: DayCourse) {
   c.followWeeks ??= 4;
 }
 
+/** Остальные нозологии: форма по МКБ, стадия из диагноза, номер курса по прошлым курсам, свой шаблон врача. */
+function buildNosFor(c: DayCourse, icd = '') {
+  const prev = previousNos(c, courses());
+  const nos = c.nos ?? initialNosParams(c, prev.length, icd);
+  const built = buildNos({ key: c.template, age: ageOf(c.birthYear, c.startDate), params: nos, custom: customs()[customKey(c.template, nos.form)] ?? null, prevStart: prev[0]?.startDate ?? null });
+  c.nos = nos;
+  c.rows = built.rows;
+  c.after = built.after;
+  c.labs ??= defaultLabs(c.template, built.rows, nos.form);
+  c.followWeeks ??= 4;
+}
+
 /** Данные пациента и диагноз из амбулаторного приёма. */
-function fromEncounter(encounterId: string): Partial<DayCourse> {
+function fromEncounter(encounterId: string): Partial<DayCourse> & { icd?: string } {
   const e = db().encounters.find((x) => x.id === encounterId);
   if (!e) throw new HttpError(404, 'Визит не найден');
   const p = db().patients.find((x) => x.id === e.patientId);
   const d = e.soap.assessment.primaryDiagnosis;
   const form = d.clinicalForm && d.clinicalForm !== d.icd10Name ? `, ${d.clinicalForm.toLowerCase()}` : '';
-  const vitiligo = /^L80/i.test(d.icd10Code || '');
-  const stage = d.stage === 'PROGRESSIVE' ? ', прогрессирующая стадия' : d.stage === 'STATIONARY' ? (vitiligo ? ', стадия ремиссии' : ', стабильная стадия') : '';
+  // «Стационарная» стадия в дневном стационаре называется ремиссией (решение врача клиники)
+  const stage = d.stage === 'PROGRESSIVE' ? ', прогрессирующая стадия' : d.stage === 'STATIONARY' ? ', стадия ремиссии' : d.stage === 'REGRESSIVE' ? ', регрессирующая стадия' : '';
   return {
     encounterId: e.id,
     patientId: e.patientId,
     fio: p?.fullName ?? '',
     birthYear: p?.birthDate?.slice(0, 4) ?? '',
     phone: p?.phone ?? '',
+    sex: p?.sex === 'M' || p?.sex === 'F' ? p.sex : '',
     diagnosis: d.icd10Code ? `${d.icd10Name}${form}${stage} (${d.icd10Code})` : '',
     template: templateForIcd(d.icd10Code),
+    icd: d.icd10Code || '',
   };
 }
 
@@ -107,7 +144,7 @@ export function registerDayHospitalRoutes() {
 
   route('POST', '/api/v1/day-courses', async (req, res) => {
     const b = await readJson<DayCourseInput & { fromEncounterId?: string }>(req);
-    const linked = b.fromEncounterId ? fromEncounter(b.fromEncounterId) : {};
+    const { icd: linkedIcd = '', ...linked } = b.fromEncounterId ? fromEncounter(b.fromEncounterId) : {};
     // Повторное нажатие «Оформить курс» в том же приёме открывает уже созданный курс
     if (linked.encounterId) {
       const existing = courses().find((c) => c.encounterId === linked.encounterId && c.status === 'ACTIVE');
@@ -117,11 +154,14 @@ export function registerDayHospitalRoutes() {
     const template = (linked.template ?? (TPLS.includes(b.template as DayTemplate) ? b.template : 'empty')) as DayTemplate;
     const c: DayCourse = {
       id: newId('dh'), encounterId: null, patientId: null, fio: '', birthYear: '', phone: '', diagnosis: '', doctor: '',
-      startDate: todayIso(), template, lang: 'ru', rows: templateRows(template), status: 'ACTIVE', createdAt: now, updatedAt: now,
+      startDate: todayIso(), template, lang: 'ru', rows: [], status: 'ACTIVE', createdAt: now, updatedAt: now,
       ...linked,
     };
     applyInput(c, { ...b, template: undefined, rows: b.rows });
-    if (c.template === 'vit' && b.rows === undefined) buildVitFor(c);
+    if (b.rows === undefined) {
+      if (c.template === 'vit') buildVitFor(c);
+      else if (c.template !== 'empty') buildNosFor(c, linkedIcd);
+    }
     courses().push(c);
     saveDb();
     audit('CREATE_DAY_COURSE', c.id, req.ip);
@@ -134,6 +174,30 @@ export function registerDayHospitalRoutes() {
     c.updatedAt = new Date().toISOString();
     saveDb();
     json(res, 200, c);
+  });
+
+  // Свои шаблоны врачей (лист нозологии, сохранённый кнопкой «Сохранить как мой шаблон»)
+  route('GET', '/api/v1/day-templates', (_req, res) => json(res, 200, customs()));
+
+  route('PUT', '/api/v1/day-templates/:key', async (req, res) => {
+    const key = str(req.params.key, 40);
+    if (!/^[a-z]+(:[a-z]+)?$/.test(key) || !TPLS.includes(key.split(':')[0] as DayTemplate)) throw new HttpError(422, 'Неизвестный шаблон');
+    const b = await readJson<{ rows?: unknown; after?: unknown; labs?: unknown }>(req);
+    const rows = cleanRows(b.rows ?? []).map(({ id: _id, ...r }) => r);
+    if (!rows.length) throw new HttpError(422, 'Пустой лист нельзя сохранить как шаблон');
+    const after = cleanAfter(b.after ?? []).map((a) => ({ ru: a.ru, uz: a.uz }));
+    customs()[key] = { rows, after, labs: b.labs === undefined ? undefined : cleanLabs(b.labs), savedAt: new Date().toISOString() };
+    saveDb();
+    audit('SAVE_DAY_TEMPLATE', key, req.ip);
+    json(res, 200, customs()[key]);
+  });
+
+  route('DELETE', '/api/v1/day-templates/:key', (req, res) => {
+    const key = str(req.params.key, 40);
+    delete customs()[key];
+    saveDb();
+    audit('DELETE_DAY_TEMPLATE', key, req.ip);
+    json(res, 200, { ok: true });
   });
 
   route('DELETE', '/api/v1/day-courses/:id', (req, res) => {

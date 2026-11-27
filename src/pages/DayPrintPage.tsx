@@ -2,6 +2,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { getDayCourse } from '../lib/api';
 import { COURSE_DAYS, PRINT_TR, WARN, courseDates, ddmm, ddmmyyyy, isIsotretinoin, type DayCourse } from '../data/dayHospital';
 import { DEX_NOTE, followDate, isDexRow } from '../data/vitBuilder';
+import { ALCOHOL_NOTE, isMetronidazole, labText, nosDef } from '../data/nosologies';
 import { Icon } from '../components/ui/Icon';
 
 // Лист назначений дневного стационара: A4 альбомная. Сам лист всегда помещается на одну страницу —
@@ -52,7 +53,11 @@ export function DayPrintPage({ id, lang }: { id: string; lang: 'ru' | 'uz' }) {
   const hasDex = c.rows.some(isDexRow);
   const after = (c.after ?? []).filter((a) => (a[lang] || a.ru || a.uz).trim());
   const follow = followDate(c.startDate, c.followWeeks ?? 0);
-  const hasAfter = after.length > 0 || !!follow;
+  const labs = (c.labs ?? []).map((k) => labText(k, lang)).filter(Boolean);
+  const hasAfter = after.length > 0 || !!follow || labs.length > 0;
+  const hasMetro = c.rows.some(isMetronidazole);
+  // номер курса — для нозологий с панелью конструктора (у витилиго он уже в диагнозе врача)
+  const courseNo = c.template !== 'vit' && nosDef(c.template).course && c.nos?.course ? t.courseN.replace('{n}', String(c.nos.course)) : '';
 
   const afterBlock = (
     <div className="dhp__after">
@@ -60,6 +65,7 @@ export function DayPrintPage({ id, lang }: { id: string; lang: 'ru' | 'uz' }) {
       {after.length > 0 && (
         <ol>{after.map((a) => <li key={a.id}>{a[lang] || a.ru || a.uz}</li>)}</ol>
       )}
+      {labs.length > 0 && <p className="dhp__labs"><b>{t.labs}:</b> {labs.join(', ')}</p>}
       {follow && (
         <p className="dhp__follow">{t.follow}: <b>{ddmmyyyy(follow.toISOString().slice(0, 10))}</b> ({t.followWeeks.replace('{n}', String(c.followWeeks))})</p>
       )}
@@ -81,7 +87,7 @@ export function DayPrintPage({ id, lang }: { id: string; lang: 'ru' | 'uz' }) {
         <div className="dhp__info">
           <table><tbody>
             <tr><th scope="row">{t.doc}</th><td>{c.doctor}</td></tr>
-            <tr><th scope="row">{t.dx}</th><td>{c.diagnosis}</td></tr>
+            <tr><th scope="row">{t.dx}</th><td>{c.diagnosis}{courseNo && `${c.diagnosis ? ' · ' : ''}${courseNo}`}</td></tr>
           </tbody></table>
           <table><tbody>
             <tr><th scope="row">{t.pt}</th><td>{c.fio}</td></tr>
@@ -107,7 +113,7 @@ export function DayPrintPage({ id, lang }: { id: string; lang: 'ru' | 'uz' }) {
                 <tr key={r.id} className="dhp__row">
                   <td className="dhp__num">{n}</td>
                   <td className="dhp__name">
-                    {name(r)}{isDexRow(r) && ' *'}
+                    {name(r)}{isDexRow(r) && ' *'}{isMetronidazole(r) && ' **'}
                     {(isIsotretinoin(r.ru) || isIsotretinoin(r.uz)) && <div className="dhp__warn">{WARN[lang]}</div>}
                   </td>
                   {r.cells.slice(0, COURSE_DAYS).map((v, i) => <td key={i} className={`dhp__mark ${markClass(v)}`}>{v === '-' ? '−' : v}</td>)}
@@ -116,7 +122,7 @@ export function DayPrintPage({ id, lang }: { id: string; lang: 'ru' | 'uz' }) {
             })}
           </tbody>
         </table>
-        <p className="dhp__legend">{t.legend}{hasDex && <><br /><b>* {DEX_NOTE[lang]}</b></>}</p>
+        <p className="dhp__legend">{t.legend}{hasDex && <><br /><b>* {DEX_NOTE[lang]}</b></>}{hasMetro && <><br /><b>** {ALCOHOL_NOTE[lang]}</b></>}</p>
         {hasAfter && afterOnFirst && afterBlock}
         <span className="dhp__spacer" />
         <div className="dhp__sign">

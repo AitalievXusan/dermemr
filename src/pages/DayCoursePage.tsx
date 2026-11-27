@@ -1,11 +1,18 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { deleteDayCourse, getDayCourse, listDayCourses, patchDayCourse } from '../lib/api';
+import { deleteDayCourse, deleteDayTemplate, getDayCourse, listDayCourses, listDayTemplates, patchDayCourse, saveDayTemplate } from '../lib/api';
 import { navigate } from '../lib/router';
 import { toast } from '../state';
 import {
-  COURSE_DAYS, DH_TR, PATTERNS, WARN, courseDates, ddmm, ddmmyyyy, emptyRow, isIsotretinoin, nextMark, templateRows,
-  type AfterRow, type DayCourse, type DayCourseInput, type DayLang, type DayPattern, type DayRow, type DaySection, type DayTemplate, type VitParams,
+  COURSE_DAYS, DH_TR, PATTERNS, WARN, courseDates, ddmm, ddmmyyyy, emptyRow, isIsotretinoin, nextMark, rowId,
+  type AfterRow, type DayCourse, type DayCourseInput, type DayLang, type DayPattern, type DayRow, type DaySection, type DayTemplate, type NosParams, type NosStage, type VitParams,
 } from '../data/dayHospital';
+import {
+  LABS, buildNos, customKey, defaultLabs, guideFor, initialNosParams, labOptions, labText, nosDef, nosHints, previousNos, sexOf, stdInGuide,
+  type CustomTemplate,
+} from '../data/nosologies';
+import { useGuidelines } from '../lib/guidelines';
+import { NosPicker } from '../components/dayhospital/NosPicker';
+import { PrevSheets } from '../components/dayhospital/PrevSheets';
 import {
   DEFAULT_VIT, ageGroup, ageOf, buildVit, dexCells, dexFromRows, followDate, initialParams, isChild, isLegacyVit, mergeAfter, mergeRebuild,
   rowHints, stdOf, vitHistory, yearsRu, type Chip,
@@ -72,6 +79,11 @@ export function DayCoursePage({ id }: { id: string }) {
   const [history, setHistory] = useState<DayCourse[] | null>(null);
   const [chips, setChips] = useState<Chip[]>([]);
   const builtGroup = useRef<string>('');
+  // свои шаблоны врачей по нозологиям (кроме витилиго)
+  const [customs, setCustoms] = useState<Record<string, CustomTemplate> | null>(null);
+  const [sheetsOpen, setSheetsOpen] = useState(false);
+  const [labDraft, setLabDraft] = useState('');
+  const guides = useGuidelines();
 
   const inflight = useRef<Promise<void> | null>(null);
 
@@ -115,12 +127,19 @@ export function DayCoursePage({ id }: { id: string }) {
   }, [id]);
 
   const isVit = course?.template === 'vit';
+  const isNos = !!course && course.template !== 'vit' && course.template !== 'empty';
   useEffect(() => {
-    if (!isVit || history) return;
+    if ((!isVit && !isNos) || history) return;
     let alive = true;
     listDayCourses().then((all) => alive && setHistory(all)).catch(() => alive && setHistory([]));
     return () => { alive = false; };
-  }, [isVit, history]);
+  }, [isVit, isNos, history]);
+  useEffect(() => {
+    if (!isNos || customs) return;
+    let alive = true;
+    listDayTemplates().then((m) => alive && setCustoms(m)).catch(() => alive && setCustoms({}));
+    return () => { alive = false; };
+  }, [isNos, customs]);
 
   const update = (patch: Partial<Editable>) => {
     setCourse((c) => (c ? { ...c, ...patch } : c));
@@ -150,6 +169,44 @@ export function DayCoursePage({ id }: { id: string }) {
     });
   };
 
+  /** Собрать лист нозологии (не витилиго) по панели конструктора и своему шаблону врача. */
+  const rebuildNos = (c: DayCourse, params: NosParams, hist: DayCourse[] | null, mine: Record<string, CustomTemplate> | null, legacyAsk = true, extra: Partial<Editable> = {}) => {
+    const age = ageOf(c.birthYear, c.startDate);
+    const prev = previousNos(c, hist ?? []);
+    const built = buildNos({ key: c.template, age, params, custom: mine?.[customKey(c.template, params.form)] ?? null, prevStart: prev[0]?.startDate ?? null });
+    builtGroup.current = ageGroup(age);
+    setChips(built.chips);
+    const legacy = c.rows.length > 0 && !c.rows.some((r) => r.auto);
+    if (legacy && legacyAsk && !window.confirm(DH_TR[c.lang].replaceLegacy)) {
+      update({ nos: params, ...extra });
+      return;
+    }
+    update({
+      nos: params,
+      rows: legacy ? built.rows : mergeRebuild(c.rows, built.rows),
+      after: mergeAfter(c.after, built.after),
+      labs: c.labs ?? defaultLabs(c.template, built.rows, params.form),
+      followWeeks: c.followWeeks ?? 4,
+      ...extra,
+    });
+  };
+
+  // Первое открытие курса нозологии: форма по МКБ, стадия из диагноза, номер курса по истории
+  useEffect(() => {
+    if (!course || !isNos || !history || !customs) return;
+    const prev = previousNos(course, history);
+    if (!course.nos) {
+      const params = initialNosParams(course, prev.length);
+      if (!course.rows.length) rebuildNos(course, params, history, customs, false);
+      else update({ nos: params, ...(course.labs ? {} : { labs: defaultLabs(course.template, course.rows, params.form) }) });
+    } else if (!chips.length) {
+      const age = ageOf(course.birthYear, course.startDate);
+      builtGroup.current = ageGroup(age);
+      setChips(buildNos({ key: course.template, age, params: course.nos, custom: customs[customKey(course.template, course.nos.form)] ?? null, prevStart: prev[0]?.startDate ?? null }).chips);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [course?.id, course?.template, history, customs]);
+
   // Первое открытие курса витилиго: номер курса по истории пациента, стадия — из диагноза
   useEffect(() => {
     if (!course || course.template !== 'vit' || !history) return;
@@ -177,8 +234,8 @@ export function DayCoursePage({ id }: { id: string }) {
   const setRow = (rowId: string, patch: Partial<DayRow>) => setRows(rows.map((r) => (r.id === rowId ? { ...r, ...patch, ...(r.auto ? { edited: true } : {}) } : r)));
   const setName = (r: DayRow, v: string) => setRow(r.id, {
     ...(lang === 'uz' ? { uz: v } : { ru: v }),
-    // строка врача: отметку стандарта ставим по названию препарата
-    ...(r.auto ? {} : { std: stdOf(lang === 'uz' ? (r.ru || v) : v) }),
+    // строка врача: отметку стандарта ставим по названию препарата (у других нозологий — по их протоколу, на лету)
+    ...(r.auto ? {} : { std: course.template === 'vit' ? stdOf(lang === 'uz' ? (r.ru || v) : v) : null }),
   });
   const age = ageOf(course.birthYear, course.startDate);
   const vit = course.vit ?? DEFAULT_VIT;
@@ -186,14 +243,83 @@ export function DayCoursePage({ id }: { id: string }) {
   const hist = history ? vitHistory(course, history) : null;
   const after = course.after ?? [];
   const setAfter = (next: AfterRow[]) => update({ after: next });
-  const stdIn = rows.filter((r) => r.std === true).length;
-  const stdOut = rows.filter((r) => r.std === false).length;
+  // отметка стандарта: у витилиго хранится в строке, у остальных — по протоколу нозологии на лету
+  const guide = isNos ? guides?.find((g) => g.title === guideFor(course.template, course.nos?.form)) ?? null : null;
+  const stdView = (r: DayRow): boolean | null => (course.template === 'vit' ? r.std : guide ? stdInGuide(guide, r) : null);
+  const stdIn = rows.filter((r) => stdView(r) === true).length;
+  const stdOut = rows.filter((r) => stdView(r) === false).length;
+  const nosD = nosDef(course.template);
+  const nos = course.nos ?? {};
+  const setNos = (patch: Partial<NosParams>) => rebuildNos(course, { ...nos, ...patch }, history, customs);
+  const prevN = isNos && history ? previousNos(course, history) : [];
+  const sex = sexOf(course);
+  const myKey = customKey(course.template, nos.form);
+  const mine = customs?.[myKey] ?? null;
+  const labs = course.labs ?? [];
+  const toggleLab = (k: string) => update({ labs: labs.includes(k) ? labs.filter((x) => x !== k) : [...labs, k] });
+  const addLab = () => {
+    const v = labDraft.trim();
+    if (!v) return;
+    update({ labs: [...labs, `c:${v.slice(0, 110)}`] });
+    setLabDraft('');
+  };
+  const saveMine = async () => {
+    const name = `${nosD[lang]}${nos.form ? ` · ${nosD.forms?.find((f) => f.v === nos.form)?.[lang] ?? ''}` : ''}`;
+    if (!window.confirm(t.confirmSave.replace('{name}', name))) return;
+    try {
+      const saved = await saveDayTemplate(myKey, {
+        rows: rows.filter((r) => r.ru || r.uz).map(({ id: _id, ...r }) => ({ ...r, edited: undefined })),
+        after: after.filter((a) => a.ru || a.uz).map((a) => ({ ru: a.ru, uz: a.uz })),
+        labs,
+      });
+      setCustoms({ ...(customs ?? {}), [myKey]: saved });
+      toast(t.savedMine.replace('{name}', name), 'success');
+    } catch (e) {
+      toast((e as Error).message, 'danger');
+    }
+  };
+  const resetMine = async () => {
+    const name = nosD[lang];
+    if (!window.confirm(t.confirmReset.replace('{name}', name))) return;
+    try {
+      await deleteDayTemplate(myKey);
+      const next = { ...(customs ?? {}) };
+      delete next[myKey];
+      setCustoms(next);
+      // свой шаблон убран — лист собирается заново по исходному (правленные вручную строки остаются)
+      rebuildNos(course, nos, history, next, false);
+    } catch (e) {
+      toast((e as Error).message, 'danger');
+    }
+  };
+  const addFromSheet = (src: { t: string; c: string[] }, sec: DaySection) => {
+    const plusAny = src.c.some((v) => v.trim() === '+');
+    const cells = Array.from({ length: COURSE_DAYS }, (_, i) => {
+      const v = (src.c[i] ?? '').trim();
+      if (v === '+') return '+';
+      if (/^[-−]$/.test(v)) return '-';
+      if (/^[xхXХ]$/.test(v)) return plusAny ? '-' : '+';
+      return /^\d+([.,]\d+)?$/.test(v) ? v.replace('.', ',') : '';
+    });
+    const name = src.t.replace(/^(местно|маҳаллий|махаллий)\s*[:/]?\s*/i, '').replace(/^[АБабAB]\)\s*/, '').trim();
+    const fresh: DayRow = { id: rowId(), sec, ru: name, uz: name, cells, std: null, pk: cells.every((v) => !v) ? 'home' : 'manual' };
+    const next = [...rows];
+    let at = -1;
+    next.forEach((r, i) => { if (r.sec === sec) at = i; });
+    if (at < 0) {
+      const order = SECTIONS.indexOf(sec);
+      const before = next.findIndex((r) => SECTIONS.indexOf(r.sec) > order);
+      next.splice(before < 0 ? next.length : before, 0, fresh);
+    } else next.splice(at + 1, 0, fresh);
+    setRows(next);
+  };
   const eptaRemoved = course.template === 'vit' && isChild(age) && !vit.eptaBack && !rows.some((r) => /epta|эпта/i.test(`${r.ru} ${r.uz}`));
   const ageLabel = age === null ? t.ageNone : `${age < 12 ? t.ageKid : age < 18 ? t.ageTeen : t.ageAdult} · ${lang === 'uz' ? `${age} ёш` : yearsRu(age)}`;
   const follow = followDate(course.startDate, course.followWeeks ?? 0);
   const onBirthBlur = () => {
-    if (course.template !== 'vit' || !course.vit) return;
-    if (ageGroup(ageOf(course.birthYear, course.startDate)) !== builtGroup.current) rebuild(course, course.vit, history);
+    const changed = ageGroup(ageOf(course.birthYear, course.startDate)) !== builtGroup.current;
+    if (course.template === 'vit' && course.vit && changed) rebuild(course, course.vit, history);
+    if (isNos && course.nos && changed) rebuildNos(course, course.nos, history, customs);
   };
   const setStart = (v: string) => {
     // дексаметазон по пн и чт: дни меняются вместе с датой начала (если врач не правил строку сам)
@@ -236,7 +362,25 @@ export function DayCoursePage({ id }: { id: string }) {
       });
       return;
     }
-    update({ template: tpl, rows: templateRows(tpl), after: (course.after ?? []).filter((r) => !r.auto) });
+    const manualAfter = (course.after ?? []).filter((r) => !r.auto);
+    if (tpl === 'empty') {
+      update({ template: tpl, rows: [], after: manualAfter, nos: undefined });
+      setChips([]);
+      return;
+    }
+    const c: DayCourse = { ...course, template: tpl, rows: [], after: manualAfter, nos: undefined, labs: undefined };
+    setCourse(c);
+    update({ template: tpl, rows: [], after: manualAfter });
+    void Promise.all([
+      history ? Promise.resolve(history) : listDayCourses().catch(() => [] as DayCourse[]),
+      customs ? Promise.resolve(customs) : listDayTemplates().catch(() => ({} as Record<string, CustomTemplate>)),
+    ]).then(([all, mineAll]) => {
+      if (!history) setHistory(all);
+      if (!customs) setCustoms(mineAll);
+      const params = initialNosParams(c, previousNos(c, all).length);
+      const built = buildNos({ key: tpl, age: ageOf(c.birthYear, c.startDate), params, custom: mineAll[customKey(tpl, params.form)] ?? null });
+      rebuildNos(c, params, all, mineAll, false, { labs: mineAll[customKey(tpl, params.form)]?.labs ?? defaultLabs(tpl, built.rows, params.form) });
+    });
   };
   const remove = async () => {
     if (!window.confirm(t.confirmDelete)) return;
@@ -306,18 +450,8 @@ export function DayCoursePage({ id }: { id: string }) {
               <input className="input" type="date" value={course.startDate} onChange={(e) => e.target.value && setStart(e.target.value)} />
             </label>
           </div>
-          <div className="dh-fields dh-fields--end">
-            <div className="dh-field dh-field--wide">
-              <span>{t.template}</span>
-              <Seg<DayTemplate>
-                label={t.template}
-                value={course.template}
-                onChange={pickTemplate}
-                options={[{ value: 'vit', label: t.vit }, { value: 'acne', label: t.acne }, { value: 'empty', label: t.empty }]}
-              />
-            </div>
-            <span className="muted dh-fields__note">{t.course}</span>
-          </div>
+          <NosPicker value={course.template} form={course.nos?.form} lang={lang} guides={guides} onPick={pickTemplate} onOpenSheets={() => setSheetsOpen(true)} />
+          <span className="muted dh-fields__note">{t.course}</span>
         </section>
 
         {course.template === 'vit' && (
@@ -351,10 +485,91 @@ export function DayCoursePage({ id }: { id: string }) {
             </div>
           </section>
         )}
+        {isNos && (
+          <section className="card dhb">
+            <div className="dhb__head">
+              <h2 className="card__title">{t.builderNos.replace('{name}', nosD[lang])}</h2>
+              <span className="muted">{t.builderNosHint}</span>
+            </div>
+            <div className="dhb__grid dhb__grid--auto">
+              {nosD.forms && (
+                <div className="dh-field"><span>{t.form}</span>
+                  <Seg<string> label={t.form} value={nos.form ?? nosD.forms[0].v} onChange={(v) => setNos({ form: v })} options={nosD.forms.map((f) => ({ value: f.v, label: f[lang] }))} />
+                </div>
+              )}
+              {nosD.stages && (
+                <div className="dh-field"><span>{t.stage}</span>
+                  <Seg<NosStage> label={t.stage} value={nos.stage ?? 'prog'} onChange={(v) => setNos({ stage: v })}
+                    options={nosD.stages.map((st) => ({ value: st, label: st === 'prog' ? (course.template === 'eczema' ? t.exac : t.prog) : st === 'stat' ? t.stat : t.regr }))} />
+                </div>
+              )}
+              {nosD.course && (
+                <div className="dh-field"><span>{t.courseNo}{history && <> · <b className="dhb__sug">{prevN.length ? t.courseSug.replace('{n}', String(Math.min(4, prevN.length + 1))) : t.courseFirst}</b></>}</span>
+                  <Seg<string> label={t.courseNo} value={String(nos.course ?? 1)} onChange={(v) => setNos({ course: Number(v) as NosParams['course'] })}
+                    options={[{ value: '1', label: t.c1 }, { value: '2', label: t.c2 }, { value: '3', label: t.c3 }, { value: '4', label: t.c4 }]} />
+                </div>
+              )}
+              {nosD.minox && (
+                <div className="dh-field"><span>{t.minox}</span>
+                  <Seg<string> label={t.minox} value={nos.minox ?? '5'} onChange={(v) => setNos({ minox: v as NosParams['minox'] })}
+                    options={[{ value: '5', label: '5%' }, { value: '2', label: '2%' }, { value: '0', label: t.minoxNo }]} />
+                </div>
+              )}
+              {nosD.proc && (
+                <div className="dh-field"><span>{t.proc}</span>
+                  <Seg<string> label={t.proc} value={nos.proc ?? 'alt'} onChange={(v) => setNos({ proc: v as NosParams['proc'] })}
+                    options={[{ value: 'alt', label: t.procAlt }, { value: 'prp', label: t.procPrp }]} />
+                </div>
+              )}
+              <div className="dh-field"><span>{t.age}</span>
+                <span className={`dhb__age${isChild(age) ? ' is-child' : ''}`}>{ageLabel}</span>
+              </div>
+            </div>
+            {nosD.minox && <p className="muted dhb__tip">{t.minoxHint}</p>}
+            <div className="dhb__applied">
+              <span className="dhb__label">{t.applied}</span>
+              <div className="dhb__chips">
+                {chips.map((c, i) => <span key={i} className="dhb__chip">{c[lang]}</span>)}
+                {prevN[0] && <a className="dhb__chip dhb__chip--link" href={`#/day-hospital/${prevN[0].id}`}>{t.prev}: {ddmmyyyy(prevN[0].startDate)}</a>}
+              </div>
+              <div className="dhb__actions">
+                <button type="button" className="btn btn--outline btn--sm" onClick={() => rebuildNos(course, nos, history, customs)}><Icon name="refresh" /> {t.rebuild}</button>
+                <button type="button" className="btn btn--outline btn--sm" disabled={!rows.length || !customs} onClick={() => void saveMine()}><Icon name="check" /> {t.saveMine}</button>
+                {mine && <button type="button" className="btn btn--ghost btn--sm" onClick={() => void resetMine()}>{t.resetMine}</button>}
+                <span className="muted">{t.rebuildHint}</span>
+              </div>
+            </div>
+          </section>
+        )}
+        {course.template !== 'empty' && (
+          <section className="card dh-labs">
+            <div className="dhb__head">
+              <h2 className="card__title">{t.labs}</h2>
+              <span className="muted">{t.labsHint}</span>
+            </div>
+            <div className="dh-labs__list">
+              {labOptions(course.template).map((k) => (
+                <label key={k} className="dh-labs__item">
+                  <input type="checkbox" checked={labs.includes(k)} onChange={() => toggleLab(k)} /> {LABS[k][lang]}
+                </label>
+              ))}
+              {labs.filter((k) => k.startsWith('c:')).map((k) => (
+                <span key={k} className="dh-labs__item dh-labs__item--own">
+                  <input type="checkbox" checked readOnly aria-hidden="true" tabIndex={-1} /> {labText(k, lang)}
+                  <button type="button" className="dh-labs__x" aria-label={t.removeLab} onClick={() => update({ labs: labs.filter((x) => x !== k) })}>×</button>
+                </span>
+              ))}
+            </div>
+            <div className="dh-labs__add">
+              <input className="input" placeholder={t.labPh} aria-label={t.addLab} value={labDraft} onChange={(e) => setLabDraft(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && addLab()} />
+              <button type="button" className="btn btn--outline btn--sm" disabled={!labDraft.trim()} onClick={addLab}><Icon name="plus" /> {t.addLab}</button>
+            </div>
+          </section>
+        )}
+        {isNos && guides && !guide && <div className="dh-note dh-note--warn"><Icon name="alert" /> {t.noGuide}</div>}
         {(stdIn > 0 || stdOut > 0) && (
           <div className="dh-note dh-note--ok"><Icon name="check" /> {t.stdLine.replace('{n}', String(stdIn)).replace('{m}', String(stdIn + stdOut))}{stdOut > 0 && <> · <b>{t.outLine.replace('{k}', String(stdOut))}</b></>}</div>
         )}
-        {course.template === 'acne' && <div className="dh-note dh-note--warn"><Icon name="alert" /> {t.noProto}</div>}
 
         <section className="card dh-sheet">
           <div className="dh-grid dh-grid--head">
@@ -378,10 +593,10 @@ export function DayCoursePage({ id }: { id: string }) {
                       <span className="dh-grid__n mono">{n}</span>
                       <span className="dh-grid__name">
                         <input className="input" aria-label={t.colName} value={r[lang]} placeholder={lang === 'uz' && r.ru ? r.ru : t.namePh} onChange={(e) => setName(r, e.target.value)} />
-                        {(r.std !== null || r.why) && (
+                        {(stdView(r) !== null || r.why) && (
                           <span className="dh-tags">
-                            {r.std === true && <span className="dh-std">{t.inStd}</span>}
-                            {r.std === false && <span className="dh-std dh-std--out">{t.outStd}</span>}
+                            {stdView(r) === true && <span className="dh-std">{t.inStd}</span>}
+                            {stdView(r) === false && <span className="dh-std dh-std--out">{t.outStd}</span>}
                             {r.why && whyText(r.why, t) && <span className="dh-std dh-std--why">{whyText(r.why, t)}</span>}
                           </span>
                         )}
@@ -404,7 +619,7 @@ export function DayCoursePage({ id }: { id: string }) {
                       <button type="button" className="dh-remove" aria-label={t.remove} title={t.remove} onClick={() => setRows(rows.filter((x) => x.id !== r.id))}>×</button>
                     </div>
                     {warn && <div className="dh-warn"><Icon name="alert" /> {WARN[lang]}</div>}
-                    {rowHints(r, age).map((h, hi) => <div key={hi} className={h.kind === 'warn' ? 'dh-warn' : 'dh-hint'}><Icon name="alert" /> {h[lang]}</div>)}
+                    {[...rowHints(r, age), ...nosHints(r, age, sex)].map((h, hi) => <div key={hi} className={h.kind === 'warn' ? 'dh-warn' : 'dh-hint'}><Icon name="alert" /> {h[lang]}</div>)}
                   </div>
                 );
               })}
@@ -449,6 +664,8 @@ export function DayCoursePage({ id }: { id: string }) {
             </label>
           </div>
         </section>
+
+        {sheetsOpen && <PrevSheets template={course.template} lang={lang} onClose={() => setSheetsOpen(false)} onAdd={addFromSheet} />}
 
         <div className="dh-actions">
           <button type="button" className="btn btn--ghost" onClick={() => void remove()}><Icon name="trash" /> {t.deleteCourse}</button>

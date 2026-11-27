@@ -48,11 +48,11 @@ export function dexFromRows(rows: DayRow[]): number | null {
 
 const norm = (s: string) => s.toLowerCase().replace(/ё/g, 'е').replace(/\s+/g, ' ').trim();
 
-/** Прошлые курсы витилиго этого пациента (по карточке или ФИО + год рождения), новые первыми. */
-export function previousCourses(c: Pick<DayCourse, 'id' | 'patientId' | 'fio' | 'birthYear' | 'startDate' | 'createdAt'>, all: DayCourse[]): DayCourse[] {
+/** Прошлые курсы этого пациента по той же нозологии (по умолчанию витилиго) (по карточке или ФИО + год рождения), новые первыми. */
+export function previousCourses(c: Pick<DayCourse, 'id' | 'patientId' | 'fio' | 'birthYear' | 'startDate' | 'createdAt'>, all: DayCourse[], template: DayCourse['template'] = 'vit'): DayCourse[] {
   const fio = norm(c.fio || '');
   return all
-    .filter((x) => x.id !== c.id && x.template === 'vit')
+    .filter((x) => x.id !== c.id && x.template === template)
     .filter((x) => (c.patientId && x.patientId ? x.patientId === c.patientId : !!fio && norm(x.fio || '') === fio && (x.birthYear || '') === (c.birthYear || '')))
     .filter((x) => (x.startDate || '') < (c.startDate || '') || ((x.startDate || '') === (c.startDate || '') && x.createdAt < c.createdAt))
     .sort((a, b) => (b.startDate + b.createdAt).localeCompare(a.startDate + a.createdAt));

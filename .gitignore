@@ -8,7 +8,8 @@ storage
 .env
 scripts/guidelines/grids
 scripts/guidelines/parsed.json
-# PDF клинических протоколов МЗ РУз хранятся локально (папка guidelines/)
+# Исходные PDF протоколов МЗ РУз (папка guidelines/) — локально; в репозитории их копии
+# с латинскими именами лежат в public/guidelines (scripts/copy-guidelines.mjs)
 guidelines/*.pdf
 guidelines/*.pptx
 

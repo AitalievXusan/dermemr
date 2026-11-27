@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { COURSE_DAYS, PATTERNS, courseDates, courseDay, ddmm, isIsotretinoin, nextMark, templateForIcd, templateRows } from '../data/dayHospital';
+import { COURSE_DAYS, PATTERNS, courseDates, courseDay, ddmm, isIsotretinoin, nextMark } from '../data/dayHospital';
+import { buildNos, templateForIcd } from '../data/nosologies';
 
 describe('дневной стационар', () => {
   it('10 рабочих дней без воскресений', () => {
@@ -34,8 +35,8 @@ describe('дневной стационар', () => {
   it('шаблон по МКБ-10 и предупреждение для изотретиноина', () => {
     expect(templateForIcd('L80')).toBe('vit');
     expect(templateForIcd('L70.0')).toBe('acne');
-    expect(templateForIcd('L40.0')).toBe('empty');
-    expect(templateRows('acne').some((r) => isIsotretinoin(r.ru) && isIsotretinoin(r.uz))).toBe(true);
-    expect(templateRows('vit')).toHaveLength(0); // витилиго собирает конструктор
+    expect(templateForIcd('L40.0')).toBe('psor');
+    expect(templateForIcd('Q99')).toBe('empty');
+    expect(buildNos({ key: 'acne', age: 25, params: {} }).rows.some((r) => isIsotretinoin(r.ru) && isIsotretinoin(r.uz))).toBe(true);
   });
 });

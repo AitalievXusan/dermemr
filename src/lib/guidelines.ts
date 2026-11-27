@@ -81,8 +81,17 @@ export function matchGuidelines(list: Guideline[], code: string): Guideline[] {
   return list.filter((g) => g.icd.some((i) => i.code.split('.')[0] === head));
 }
 
-/** Ссылка на PDF первоисточника, открывается на нужной странице. */
-export const pdfUrl = (file: string, page?: number) => `/guidelines/${encodeURIComponent(file)}${page ? `#page=${page}` : ''}`;
+const TRANSLIT: Record<string, string> = { а: 'a', б: 'b', в: 'v', г: 'g', д: 'd', е: 'e', ё: 'e', ж: 'zh', з: 'z', и: 'i', й: 'y', к: 'k', л: 'l', м: 'm', н: 'n', о: 'o', п: 'p', р: 'r', с: 's', т: 't', у: 'u', ф: 'f', х: 'h', ц: 'ts', ч: 'ch', ш: 'sh', щ: 'sch', ъ: '', ы: 'y', ь: '', э: 'e', ю: 'yu', я: 'ya', ў: 'u', қ: 'q', ғ: 'g', ҳ: 'h' };
+
+/** Латинское имя PDF в public/guidelines (то же, что делает scripts/copy-guidelines.mjs). */
+export function pdfSlug(file: string): string {
+  const base = file.replace(/\.pdf$/i, '').toLowerCase();
+  const lat = [...base].map((ch) => TRANSLIT[ch] ?? ch).join('');
+  return `${lat.replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'doc'}.pdf`;
+}
+
+/** Ссылка на PDF первоисточника, открывается на нужной странице (и на компьютере, и в облаке). */
+export const pdfUrl = (file: string, page?: number) => `/guidelines/${pdfSlug(file)}${page ? `#page=${page}` : ''}`;
 
 /** Основа названия препарата для сравнения: «Мометазона фуроат: 0,1%» → «мометазон». */
 export function drugKey(name: string): string {

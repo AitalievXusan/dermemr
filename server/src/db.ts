@@ -99,6 +99,8 @@ export interface DbShape {
   dictionaries: Record<string, unknown>;
   /** Дневной стационар (появилось позже — в старых db.json поля нет). */
   dayCourses?: DayCourse[];
+  /** Свои шаблоны дневного стационара: «нозология:форма» → строки листа. */
+  dayTemplates?: Record<string, import('../../src/data/nosologies').CustomTemplate>;
   /** Облачный режим: журнал событий для опроса вместо WebSocket. */
   events?: { seq: number; room: string; type: string; payload: unknown; at: number }[];
 }

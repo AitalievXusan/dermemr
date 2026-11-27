@@ -5,7 +5,8 @@ import type { CdssAlert } from './cdss';
 import { checkDrug } from './cdss';
 import { applyDictionaries, type Dictionaries } from '../data/dictionaries';
 import type { MediaItem } from '../components/left/media';
-import { templateRows, todayIso, type DayCourse, type DayCourseInput } from '../data/dayHospital';
+import { todayIso, type DayCourse, type DayCourseInput } from '../data/dayHospital';
+import { buildNos, defaultLabs, initialNosParams, type CustomTemplate } from '../data/nosologies';
 import { defaultVitAfter, defaultVitRows } from '../data/vitBuilder';
 
 export interface ServerConfig {
@@ -303,9 +304,14 @@ export async function createDayCourse(input: DayCourseInput & { fromEncounterId?
   const template = input.template ?? 'empty';
   const c: DayCourse = {
     id: `dh_${Date.now().toString(36)}`, encounterId: input.fromEncounterId ?? null, patientId: null, fio: '', birthYear: '', phone: '', diagnosis: '', doctor: '',
-    startDate: todayIso(), template, lang: 'ru', rows: template === 'vit' ? defaultVitRows(todayIso()) : templateRows(template),
+    startDate: todayIso(), template, lang: 'ru', rows: template === 'vit' ? defaultVitRows(todayIso()) : [],
     ...(template === 'vit' ? { after: defaultVitAfter(todayIso()), followWeeks: 4 } : {}), status: 'ACTIVE', createdAt: now, updatedAt: now, ...input,
   };
+  if (template !== 'vit' && template !== 'empty' && !input.rows) {
+    const nos = initialNosParams(c, 0);
+    const built = buildNos({ key: template, age: null, params: nos });
+    Object.assign(c, { nos, rows: built.rows, after: built.after, labs: defaultLabs(template, built.rows, nos.form), followWeeks: 4 });
+  }
   saveLocalCourses([...localCourses(), c]);
   return c;
 }
@@ -326,4 +332,35 @@ export async function deleteDayCourse(id: string): Promise<void> {
     return;
   }
   saveLocalCourses(localCourses().filter((x) => x.id !== id));
+}
+
+// ---------- свои шаблоны врачей (дневной стационар) ----------
+const DT_LOCAL = 'dermemr.dayTemplates';
+const localTemplates = (): Record<string, CustomTemplate> => {
+  try {
+    return JSON.parse(localStorage.getItem(DT_LOCAL) || '{}') as Record<string, CustomTemplate>;
+  } catch { return {}; }
+};
+
+export async function listDayTemplates(): Promise<Record<string, CustomTemplate>> {
+  if (server.online) return req<Record<string, CustomTemplate>>('GET', '/api/v1/day-templates');
+  return localTemplates();
+}
+
+export async function saveDayTemplate(key: string, body: Omit<CustomTemplate, 'savedAt'>): Promise<CustomTemplate> {
+  if (server.online) return req<CustomTemplate>('PUT', `/api/v1/day-templates/${encodeURIComponent(key)}`, body);
+  const all = localTemplates();
+  all[key] = { ...body, savedAt: new Date().toISOString() };
+  try { localStorage.setItem(DT_LOCAL, JSON.stringify(all)); } catch { /* хранилище переполнено */ }
+  return all[key];
+}
+
+export async function deleteDayTemplate(key: string): Promise<void> {
+  if (server.online) {
+    await req('DELETE', `/api/v1/day-templates/${encodeURIComponent(key)}`);
+    return;
+  }
+  const all = localTemplates();
+  delete all[key];
+  try { localStorage.setItem(DT_LOCAL, JSON.stringify(all)); } catch { /* ignore */ }
 }

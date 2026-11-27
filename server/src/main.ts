@@ -45,8 +45,9 @@ const server = createServer(async (rawReq, res) => {
   if (req.path.startsWith('/guidelines/') && (req.method === 'GET' || req.method === 'HEAD')) {
     let name = '';
     try { name = basename(decodeURIComponent(req.path.slice('/guidelines/'.length))); } catch { /* битый URL */ }
-    const file = join(GUIDELINES_DIR, name);
-    if (name && file.toLowerCase().endsWith('.pdf') && existsSync(file)) return sendFile(res, file, { mime: 'application/pdf' });
+    // сначала латинские копии из сборки (public/guidelines → dist/guidelines), затем исходная папка guidelines/
+    const file = [join(config.distDir, 'guidelines', name), join(GUIDELINES_DIR, name)].find((f) => existsSync(f)) ?? '';
+    if (name && file.toLowerCase().endsWith('.pdf')) return sendFile(res, file, { mime: 'application/pdf' });
     return json(res, 404, { error: 'Документ не найден' });
   }
   if (serveStatic(config.distDir, req, res)) return;

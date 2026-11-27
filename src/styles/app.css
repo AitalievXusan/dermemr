@@ -827,6 +827,7 @@ input[type='range'] { accent-color: var(--accent-primary); }
 .dhp__after ol { margin: 0; padding-left: 22px; list-style: decimal; }
 .dhp__after li { display: list-item; margin: 1px 0; }
 .dhp__follow { margin: 4px 0 0; }
+.dhp__labs { margin: 4px 0 0; }
 /* Уплотнение, чтобы лист назначений поместился на одну страницу */
 .dhp--c1 { gap: 8px; padding-top: 8mm; padding-bottom: 8mm; }
 .dhp--c1 .dhp__row { height: 26px; }
@@ -869,3 +870,84 @@ a.btn { text-decoration: none; color: inherit; }
 .login__error { margin: 0; color: var(--status-danger-text); font-size: 14px; }
 .login__btn { width: 100%; justify-content: center; }
 .dh-after__row .dh-remove { height: 40px; }
+
+/* Дневной стационар: длинные подписи в кнопках-переключателях переносятся, не выходя за кнопку */
+.dh-field .dh-seg, .dhb .dh-seg { flex-wrap: wrap; }
+.dh-field .dh-seg button, .dhb .dh-seg button { flex: 1 1 auto; white-space: normal; padding: 6px 12px; line-height: 1.2; text-align: center; }
+.dhb__grid--auto { display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-end; }
+.dhb__grid--auto > .dh-field { flex: 1 1 auto; min-width: 200px; }
+.dhb__tip { margin: -6px 0 0; font-size: 13px; }
+.dhb__chip--link { color: var(--text-primary); font-weight: 600; text-decoration: underline; text-underline-offset: 3px; }
+
+/* Шаблон курса: поиск по нозологиям, частые нозологии, ссылки на документы */
+.dhn { display: flex; flex-direction: column; gap: 12px; }
+.dhn__row { display: flex; gap: 16px; align-items: flex-end; flex-wrap: wrap; }
+.dhn__search { position: relative; flex: 1 1 360px; min-width: 0; }
+.dhn__combo { position: relative; display: flex; align-items: center; color: var(--text-secondary); }
+.dhn__combo > svg { position: absolute; left: 12px; pointer-events: none; }
+.dhn__combo .input { padding-left: 36px; padding-right: 40px; width: 100%; }
+.dhn__combo .input:focus { padding-left: 35.5px; }
+.dhn__cur { position: absolute; left: 37px; right: 40px; display: flex; gap: 10px; align-items: baseline; pointer-events: none; font-size: 15px; font-weight: 600; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.dhn__cur .mono { font-size: 13px; font-weight: 500; }
+.dhn__caret { position: absolute; right: 4px; width: 34px; height: 34px; border: 0; border-radius: 8px; background: transparent; cursor: pointer; color: var(--text-secondary); font-size: 14px; }
+.dhn__list { position: absolute; z-index: 30; left: 0; right: 0; top: calc(100% + 4px); max-height: min(440px, 60vh); overflow-y: auto; border: 1px solid var(--border-strong); border-radius: 10px; background: var(--bg-surface-primary); box-shadow: var(--shadow-pop); }
+.dhn__group { position: sticky; top: 0; padding: 8px 14px 4px; background: var(--bg-surface-secondary); font: 600 11.5px var(--font-mono, monospace); letter-spacing: 0.06em; text-transform: uppercase; color: var(--accent-primary); }
+.dhn__opt { display: grid; grid-template-columns: 70px minmax(0, 1fr) auto; gap: 12px; align-items: center; padding: 9px 14px; border-top: 1px solid var(--border-subtle); cursor: pointer; color: var(--text-primary); }
+.dhn__opt.is-hi { background: var(--bg-surface-secondary); }
+.dhn__opt.is-on { background: var(--status-success-bg); font-weight: 600; }
+.dhn__code { font-size: 12.5px; color: var(--text-secondary); }
+.dhn__name { font-size: 15px; line-height: 1.3; overflow-wrap: anywhere; }
+.dhn__name .muted { font-weight: 400; font-size: 13px; }
+.dhn__src { font-size: 12px; color: var(--text-secondary); white-space: nowrap; }
+.dhn__empty { padding: 14px; font-size: 14px; }
+.dhn__links { flex: 0 1 auto; min-width: 0; }
+.dhn__linkrow { display: flex; gap: 8px; flex-wrap: wrap; }
+.dhn__link { display: inline-flex; align-items: center; gap: 8px; min-height: 42px; padding: 0 14px; border-radius: 8px; border: 1px solid var(--border-subtle); background: var(--status-success-bg); color: var(--text-primary); font-size: 14px; font-weight: 500; text-decoration: none; cursor: pointer; }
+.dhn__link:hover { border-color: var(--accent-authority); }
+.dhn__link small { font-size: 12px; color: var(--text-secondary); font-family: var(--font-mono, monospace); }
+.dhn__quick { display: flex; gap: 4px; padding: 4px; border-radius: 10px; background: var(--bg-surface-secondary); flex-wrap: wrap; }
+.dhn__quick button { flex: 1 1 130px; min-width: 0; min-height: 42px; padding: 6px 10px; border: 0; border-radius: 8px; background: transparent; cursor: pointer; font-size: 14.5px; line-height: 1.2; color: var(--text-primary); overflow-wrap: anywhere; }
+.dhn__quick button.is-on { background: var(--accent-authority); color: var(--bg-surface-primary); font-weight: 600; }
+
+/* Анализы */
+.dh-labs { gap: 12px; }
+.dh-labs__list { display: flex; flex-wrap: wrap; gap: 8px 20px; }
+.dh-labs__item { display: inline-flex; align-items: center; gap: 8px; min-height: 32px; font-size: 15px; cursor: pointer; }
+.dh-labs__item input { width: 18px; height: 18px; accent-color: var(--accent-authority); }
+.dh-labs__item--own { cursor: default; }
+.dh-labs__x { width: 28px; height: 28px; border: 1px solid var(--border-subtle); border-radius: 6px; background: transparent; cursor: pointer; color: var(--text-secondary); }
+.dh-labs__add { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.dh-labs__add .input { flex: 0 1 320px; height: 38px; }
+
+/* Прежние назначения (обезличенные листы врача) */
+.dhs { width: min(1320px, 100%); height: calc(100vh - 48px); }
+.dhs__note { margin: 0; padding: 10px 16px; font-size: 13.5px; border-bottom: 1px solid var(--border-subtle); }
+.dhs__empty { padding: 24px; }
+.dhs__body { flex: 1; min-height: 0; display: grid; grid-template-columns: 300px minmax(0, 1fr); }
+.dhs__side { display: flex; flex-direction: column; gap: 8px; padding: 12px; border-right: 1px solid var(--border-subtle); min-height: 0; }
+.dhs__side .input { height: 38px; }
+.dhs__courses { width: 100%; }
+.dhs__courses button { padding: 0 6px; min-height: 32px; }
+.dhs__count { font-size: 13px; }
+.dhs__list { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 2px; }
+.dhs__item { text-align: left; padding: 8px 10px; border: 0; border-radius: 8px; background: transparent; cursor: pointer; font-size: 14px; line-height: 1.3; color: var(--text-primary); }
+.dhs__item:hover { background: var(--bg-surface-secondary); }
+.dhs__item.is-on { background: var(--status-success-bg); font-weight: 600; }
+.dhs__sheet { min-height: 0; overflow: auto; padding: 12px 16px; display: flex; flex-direction: column; gap: 10px; }
+.dhs__head { display: flex; flex-direction: column; gap: 2px; font-size: 15px; }
+.dhs__head .muted { font-size: 13px; }
+.dhs__table { display: flex; flex-direction: column; min-width: 760px; }
+.dhs__sec { padding: 10px 0 4px; font: 600 12px var(--font-mono, monospace); letter-spacing: 0.06em; text-transform: uppercase; color: var(--accent-primary); }
+.dhs__row { display: grid; grid-template-columns: minmax(220px, 1fr) auto auto; gap: 10px; align-items: center; padding: 5px 0; border-bottom: 1px solid var(--border-subtle); }
+.dhs__name { font-size: 14px; line-height: 1.35; overflow-wrap: anywhere; }
+.dhs__cells { display: grid; grid-template-columns: repeat(10, 34px); gap: 3px; }
+.dhs__c { height: 28px; border-radius: 5px; display: flex; align-items: center; justify-content: center; font-size: 11px; background: var(--status-warning-bg); overflow: hidden; }
+.dhs__c.is-plus { background: #d6efd9; color: #1e4637; font-size: 16px; }
+.dhs__c.is-minus { background: #fbe1e6; color: #1a1a1a; font-size: 14px; }
+.dhs__c.is-dose { background: var(--accent-primary-soft); }
+.dhs__c.is-x { background: var(--bg-surface-secondary); font-size: 13px; }
+.dhs__add { min-height: 32px; padding: 0 10px; font-size: 13px; white-space: nowrap; }
+@media (max-width: 900px) {
+  .dhs__body { grid-template-columns: minmax(0, 1fr); grid-template-rows: 220px minmax(0, 1fr); }
+  .dhs__side { border-right: 0; border-bottom: 1px solid var(--border-subtle); }
+}
